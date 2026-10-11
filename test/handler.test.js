@@ -123,3 +123,12 @@ test('supplier learnt from a "<n> kharcha" correction: later rows with that name
   assert.match(c2, /kharcha · AZK · 20 × ₹1,000 = ₹20,000/);
   assert.doesNotMatch(c2, /naya/);
 });
+
+test('voice: transcript is shown, then the same text path builds the card', async () => {
+  const h = createHandler({ chat, today: () => '2026-10-11', transcribe: async () => 'Sagar ne 1500 diye' });
+  queue.push(rec({ type: 'payment', customer: 'Sagar', amount: 1500 }));
+  const r = (await h.handleMessage({ traderId: 'a', audio: Buffer.from('x') }));
+  assert.equal(r[0], 'Suna: "Sagar ne 1500 diye"');
+  assert.match(r[1], /payment mila · ₹1,500/);
+  await h.handleMessage({ traderId: 'a', text: 'nahi' });
+});

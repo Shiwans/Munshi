@@ -8,6 +8,7 @@ import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
 import * as provider from '../ai/provider.js';
+import { transcribe as whisper } from '../ai/whisper.js';
 
 const YES = /^(haan|haa+|ha|han|hanji|haanji|ji|ok+|okay|yes|y|theek|thik|sahi|done|likho|save|✅|👍|1|हाँ|हां|हो|होय|हा|ઠીક|હા)[\s.!]*$/i;
 const NO = /^(nahi|nahin|na|no|n|cancel|hatao|chhodo|rehne do|रहने दो|नहीं|नाही|ના|❌)[\s.!]*$/i;
@@ -576,5 +577,5 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
-const defaultHandler = createHandler();
+const defaultHandler = createHandler({ transcribe: whisper });
 export const handleMessage = defaultHandler.handleMessage;
