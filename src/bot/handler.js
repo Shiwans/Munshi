@@ -81,7 +81,17 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       return say(hisaabReply(data, { period: p }, L));
     }
     if (/^\/(customers|grahak)\b/i.test(input)) return say(customersReply(data, L));
+    if ((cmd = input.match(/^\/?(?:undo|galti|cancel)\s+(\d{1,2})$/i))) return askUndo(data, L, Number(cmd[1]));
     if (/^\/(undo|galti)\b/i.test(input)) return askUndo(data, L);
+    if (/^\/?(last|pichhli entries|pichhli|recent)(\s*\d+)?$/i.test(input)) return lastList(data, L);
+    if ((cmd = input.match(/^\/(?:naam|rename)\s+(.+?)\s*=\s*(.+)$/i))) {
+      const c = await findCustomer(data, cmd[1]);
+      if (!c) return say(L.noCustomer(cmd[1]));
+      const old = c.name;
+      c.name = cmd[2].trim();
+      store.addAlias(data, c.id, old);
+      return say(L.renamed(old, c.name));
+    }
     if (/^\/delete\b/.test(input)) {
       data.pending = { kind: 'delete', createdAt: store.nowIST().ts };
       return say(yesNo(L.deleteQ, L));
@@ -441,7 +451,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       }
       data.pending = null;
       const balances = balanceLines(data, p.customerIds, L);
-      return { replies: [[L.undone, ...balances].join('\n')] };
+      return { replies: [[L.undone, ...balances, L.fixHint].join('\n')] };
     }
     if (p.rows.some(rowProblems)) return { replies: [cardReply(data, L, L.needFix)] };
 
@@ -508,11 +518,33 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     return customerIds.slice(0, 8).map((id) => L.balanceNow(store.getCustomer(data, id).name, fmt(ledger.customerBalance(data, id))));
   }
 
-  function askUndo(data, L) {
+  // live = confirmed, not itself a reversal, not already reversed
+  function liveEntries(data) {
     const reversed = new Set(data.entries.filter((e) => e.reverses).map((e) => e.reverses));
-    const last = [...data.entries].reverse().find((e) => !e.reverses && !reversed.has(e.id));
-    if (!last) return { replies: [L.nothingToUndo] };
-    const batch = data.entries.filter((e) => e.batch === last.batch && !e.reverses && !reversed.has(e.id));
+    return data.entries.filter((e) => !e.reverses && !reversed.has(e.id));
+  }
+
+  // /last: numbered list the trader can point at with "galti <n>"
+  function lastList(data, L) {
+    const items = liveEntries(data).slice(-10).reverse();
+    if (!items.length) return { replies: [L.nothingToUndo] };
+    data.lastList = items.map((e) => e.id);
+    return { replies: [[L.lastTitle, ...items.map((e, i) => `${i + 1}. ${entryLine(data, e, L)}`), L.lastHint].join('\n')] };
+  }
+
+  function askUndo(data, L, n = null) {
+    const live = liveEntries(data);
+    let batch;
+    if (n !== null) {
+      const id = data.lastList?.[n - 1];
+      const e = id && live.find((x) => x.id === id);
+      if (!e) return lastList(data, L);
+      batch = [e];
+    } else {
+      const last = live.at(-1);
+      if (!last) return { replies: [L.nothingToUndo] };
+      batch = live.filter((e) => e.batch === last.batch);
+    }
     data.pending = {
       kind: 'undo',
       entryIds: batch.map((e) => e.id),

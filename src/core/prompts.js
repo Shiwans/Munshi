@@ -139,6 +139,10 @@ export function correctionPrompt(cardText) {
 
 const S = {
   hinglish: {
+    lastTitle: 'Pichhli entries:',
+    lastHint: 'Kisi entry ko cancel karna ho to: "galti <number>"',
+    fixHint: 'Ab sahi entry likhiye.',
+    renamed: (o, n) => `✅ ${o} ab ${n} hai. Purana naam bhi pehchanunga.`,
     restored: '✅ Aapka khata wapas aa gaya.',
     nothingToRestore: 'Wapas laane ko kuch nahi mila.',
     askName: 'Kiska? Jaise: /statement Sagar',
@@ -178,7 +182,7 @@ const S = {
     customersTitle: 'Customers',
     noCustomers: 'Abhi koi customer nahi.',
     welcome: 'Namaste! Main Munshi hoon — aapka hisaab-kitaab. 📒\nLikhiye, bolke bhejiye ya diary ka photo bhejiye. Har entry pehle aapko dikhaunga, aapke "haan" ke baad hi likhunga.\n\nKaunsi bhasha?',
-    help: 'Kaise use kare:\n• Likhiye: "Sagar hotel 3 jalli 72kg 28 rate udhaar"\n• Voice note: "Sagar ne 1500 diye"\n• Diary page ka photo\n• Poochiye: "Sagar ka baaki", "aaj ka hisaab", "kaun kaun baaki hai", "Sagar ka statement"\n• Galti? "galti" / "undo"\n/baaki Sagar · /hisaab · /statement Sagar · /customers · /undo\n/bhasha · /export · /delete · /wapas',
+    help: 'Kaise use kare:\n• Likhiye: "Sagar hotel 3 jalli 72kg 28 rate udhaar"\n• Voice note: "Sagar ne 1500 diye"\n• Diary page ka photo\n• Poochiye: "Sagar ka baaki", "aaj ka hisaab", "kaun kaun baaki hai", "Sagar ka statement"\n• Galti? "galti" / "undo"\n/baaki Sagar · /hisaab · /statement Sagar · /customers · /last · galti 3 · /naam Sagar = Sagar Ratna\n/bhasha · /export · /delete · /wapas',
     undoQ: 'Ye entries cancel karu? (haan / nahi)',
     nothingToUndo: 'Cancel karne ko kuch nahi.',
     undone: '✅ Cancel kar diya (ulti entry likhi, purani bhi khata mein dikhegi).',
@@ -202,6 +206,10 @@ const S = {
     exportCaption: 'Aapka pura khata (CSV).',
   },
   en: {
+    lastTitle: 'Recent entries:',
+    lastHint: 'To cancel one: "undo <number>"',
+    fixHint: 'Now send the correct entry.',
+    renamed: (o, n) => `✅ ${o} is now ${n}. The old name still works.`,
     restored: '✅ Your ledger is back.',
     nothingToRestore: 'Nothing to restore.',
     askName: 'Whose? e.g. /statement Sagar',
@@ -265,6 +273,10 @@ const S = {
     exportCaption: 'Your full ledger (CSV).',
   },
   hi: {
+    lastTitle: 'पिछली एंट्री:',
+    lastHint: 'किसी एंट्री को रद्द करना हो तो: "galti <नंबर>"',
+    fixHint: 'अब सही एंट्री लिखिए।',
+    renamed: (o, n) => `✅ ${o} अब ${n} है। पुराना नाम भी पहचानूँगा।`,
     restored: '✅ आपका खाता वापस आ गया।',
     nothingToRestore: 'वापस लाने को कुछ नहीं मिला।',
     askName: 'किसका? जैसे: /statement सागर',
@@ -322,6 +334,10 @@ const S = {
     exportCaption: 'आपका पूरा खाता (CSV)।',
   },
   mr: {
+    lastTitle: 'मागच्या नोंदी:',
+    lastHint: 'एखादी नोंद रद्द करायची असेल तर: "galti <नंबर>"',
+    fixHint: 'आता बरोबर नोंद लिहा.',
+    renamed: (o, n) => `✅ ${o} आता ${n}. जुनं नाव पण ओळखेन.`,
     restored: '✅ तुमचं खातं परत आलं.',
     nothingToRestore: 'परत आणायला काही नाही.',
     askName: 'कोणाचं? उदा. /statement सागर',
@@ -379,6 +395,10 @@ const S = {
     exportCaption: 'तुमचं पूर्ण खातं (CSV).',
   },
   gu: {
+    lastTitle: 'છેલ્લી એન્ટ્રી:',
+    lastHint: 'કોઈ એન્ટ્રી રદ કરવી હોય તો: "galti <નંબર>"',
+    fixHint: 'હવે સાચી એન્ટ્રી લખો.',
+    renamed: (o, n) => `✅ ${o} હવે ${n} છે. જૂનું નામ પણ ઓળખીશ.`,
     restored: '✅ તમારું ખાતું પાછું આવ્યું.',
     nothingToRestore: 'પાછું લાવવા કંઈ નથી.',
     askName: 'કોનું? જેમ કે: /statement સાગર',

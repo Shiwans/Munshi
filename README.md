@@ -47,8 +47,8 @@ You:    📷 diary page            →  numbered card, one row per line, the dia
 - **Text, voice note, or a photo / scanner PDF** of the diary page.
 - **Confirm or correct**: tap ✅, or fix by row number: `4 3555`, `2 rate 30`, `13 hatao`, `1 Gupta Dairy`, `18 kharcha`, `sab udhaar`.
 - **Ask**: `Sagar ka baaki`, `Sagar ka statement` (copy-ready for the customer), `aaj ka hisaab`, `kal`, `is hafte`, `customers`.
-- **Mistakes**: `galti` → a reversing entry. Nothing is ever edited or deleted.
-- **Commands**: `/hisaab [kal|hafta|mahina]`, `/baaki Sagar`, `/statement Sagar`, `/customers`, `/undo`, `/export` (CSV), `/delete` (soft: `/wapas` brings it back), `/bhasha`, `/help`.
+- **Mistakes**: `galti` cancels the last save; `/last` lists recent entries and `galti 3` cancels just that one (a reversing entry: both stay visible), then you type the correct line. `/naam Sagar = Sagar Ratna` renames a customer. Nothing is ever silently edited or deleted.
+- **Commands**: `/hisaab [kal|hafta|mahina]`, `/baaki Sagar`, `/statement Sagar`, `/customers`, `/last`, `/undo`, `/naam`, `/export` (visual HTML khata + Excel CSV), `/delete` (soft: `/wapas` brings it back), `/bhasha`, `/help`.
 - **Languages**: Hinglish (default), Hindi, Marathi, Gujarati, English.
 
 ### Tested on a real diary
@@ -105,7 +105,7 @@ src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
 src/cli.js            same handler from the terminal
 skills/munshi-ledger  Agent Skill (agentskills.io spec)
 eval/                 diary accuracy check (real pages vs answer key)
-test/                 node:test — 32 tests
+test/                 node:test — 33 tests
 ```
 
 **Storage**: one JSON file per trader, `data/<telegram-user-id>.json`, with `profile`, `customers`, `entries`,

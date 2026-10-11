@@ -219,3 +219,22 @@ test('slash commands answer from code; /delete is soft and /wapas restores every
   assert.match(back, /wapas aa gaya/);
   assert.equal(store.load('a').entries.length, before);
 });
+
+test('change old data safely: /last → galti <n> reverses only that entry; /naam renames and keeps the alias', async () => {
+  const d0 = store.load('a');
+  const liveBefore = d0.entries.length;
+  const [list] = await say('a', '/last');
+  assert.match(list, /^Pichhli entries:\n1\. /);
+  const target = store.load('a').lastList[0];
+  const [q] = await say('a', 'galti 1');
+  assert.match(q, /cancel karu/);
+  const [done] = await say('a', 'haan');
+  assert.match(done, /sahi entry likhiye/);
+  const d = store.load('a');
+  assert.equal(d.entries.length, liveBefore + 1);
+  assert.equal(d.entries.at(-1).reverses, target);
+  const [r] = await say('a', '/naam Sagar hotel = Sagar Ratna');
+  assert.match(r, /Sagar Ratna/);
+  const [b] = await say('a', 'sagar hotel ka baaki');
+  assert.match(b, /Sagar Ratna ka/);
+});
