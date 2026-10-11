@@ -6,6 +6,8 @@ proper khata (customers, udhaar, payments, daily hisaab). The trader checks ever
 
 > **Gemma reads. Code counts. The trader confirms.**
 
+**Project page:** https://shiwans.github.io/Munshi/ · **Bot:** [@shiwans_munshi_bot](https://t.me/shiwans_munshi_bot) (runs while the demo laptop is on)
+
 Built at Hacktoberfest Hack Day Mumbai, 11 Oct 2026. MIT licensed.
 
 ## Models (all open weights)
