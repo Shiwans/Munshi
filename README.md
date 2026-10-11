@@ -16,6 +16,7 @@ Built at Hacktoberfest Hack Day Mumbai, 11 Oct 2026. MIT licensed.
 | **Qwen3.6-35B-A3B (local, LM Studio)** | the laptop | Same job, fully offline; automatic fallback when the cloud call fails |
 | **Whisper large-v3-turbo (mlx-whisper)** | the laptop | Voice notes → text |
 | **nomic-embed-text-v1.5** | the laptop, LM Studio | Last step of customer-name matching |
+| **Laya multilingual (322M)** | the laptop, `laya-serve` | Prompt-injection check before any model call |
 
 The Gemma call is in [`src/ai/gemma.js`](src/ai/gemma.js):
 
@@ -87,6 +88,10 @@ TOTAL  55/57 customer rows exact (96%)
    worked example for the next photo.
 5. **Common lines and questions skip the model.** A code parser reads the lines traders type most (`Sagar hotel 3 jalli 72kg 28 rate udhaar`, `Sagar ne 1500 diye`); `haan`, row fixes, baaki, hisaab, statement and every slash command are answered by code in under a second. Gemma only sees what code can't read.
 6. **Relevance gate before the model.** [`src/core/gate.js`](src/core/gate.js) lets only bookkeeping through (numbers, ledger words, known names, photos, voice, answers to a card). Off-topic text and "ignore your instructions" attempts get a polite template and never reach a model: no cost, no injection surface.
+   A second layer runs **Laya** (open-weight decision model from Convai Innovations, Apache 2.0, multilingual
+   checkpoint) locally via `laya-serve`: one ~50 ms yes/no pass scores prompt-injection attempts. Measured on our
+   messages it separates cleanly for injection (attacks 0.94–1.0, normal lines < 0.04), so that is all we use it for.
+   Its "is this bookkeeping?" answers were not reliable on Hinglish/Devanagari, so relevance stays in code.
 7. **Swappable reader.** `provider.js` exposes one `chat()`; Gemma and Qwen implement it. If Gemma fails, Qwen answers and
    the reply says `(offline munshi)`.
 
@@ -106,7 +111,7 @@ src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
 src/cli.js            same handler from the terminal
 skills/munshi-ledger  Agent Skill (agentskills.io spec)
 eval/                 diary accuracy check (real pages vs answer key)
-test/                 node:test — 35 tests
+test/                 node:test — 36 tests
 ```
 
 **Storage**: one JSON file per trader, `data/<telegram-user-id>.json`, with `profile`, `customers`, `entries`,
@@ -130,6 +135,10 @@ Fully local: start LM Studio with `qwen/qwen3.6-35b-a3b` and `text-embedding-nom
 ```bash
 MUNSHI_PROVIDER=local npm run dev
 ```
+
+Optional injection gate: `uv tool install --python 3.12 "laya[serve]"` then
+`LAYA_HOST=127.0.0.1 LAYA_MODELS=multilingual LAYA_PRELOAD=1 LAYA_DEVICE=mps laya-serve` (binds to localhost only).
+Without it, the code gate works alone.
 
 Voice needs `ffmpeg` and `uv` (Whisper runs via `uvx --python 3.12 --from mlx-whisper mlx_whisper`, Apple Silicon).
 

@@ -8,7 +8,7 @@ import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
 import { parseLine } from '../core/parse.js';
-import { isRelevant, hasStrongSignal } from '../core/gate.js';
+import { isRelevant } from '../core/gate.js';
 import * as laya from '../ai/laya.js';
 import { buildCsv, buildReport } from '../core/report.js';
 import * as provider from '../ai/provider.js';
@@ -155,13 +155,12 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
 
     // relevance gate, layer 1 (code, free): only bookkeeping reaches the model
     let blocked = !isRelevant(data, input, { hasMedia: !!image });
-    // layer 2 (Laya, local open-weight decision model, ~30 ms): role-change attempts and off-topic text
+    // layer 2 (Laya, local open-weight decision model, ~50 ms): prompt-injection / role-change attempts
     if (!blocked && !image && !data.pending) {
       const v = await judge(input);
-      if (v) {
-        console.log(`[laya] bookkeeping=${v.bookkeeping?.toFixed(2)} injection=${v.injection?.toFixed(2)}`);
+      if (v && v.injection !== null) {
+        console.log(`[laya] injection=${v.injection.toFixed(2)}`);
         if (v.injection >= 0.8) blocked = true;
-        else if (v.bookkeeping !== null && v.bookkeeping < 0.15 && !hasStrongSignal(data, input)) blocked = true;
       }
     }
     if (blocked) {
