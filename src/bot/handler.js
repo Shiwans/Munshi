@@ -289,7 +289,10 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     if (rows.length > 1) {
       const tt = ledger.draftTotals(rows);
       const bits = [];
-      if (tt.sales) bits.push(`${fmt(tt.sales)} (${L.udhaar} ${fmt(tt.udhaarSales)}, ${L.nagad} ${fmt(tt.cashSales)})`);
+      if (tt.sales) {
+        const split = [tt.udhaarSales && `${L.udhaar} ${fmt(tt.udhaarSales)}`, tt.cashSales && `${L.nagad} ${fmt(tt.cashSales)}`].filter(Boolean);
+        bits.push(split.length > 1 ? `${fmt(tt.sales)} (${split.join(', ')})` : `${fmt(tt.sales)} ${tt.udhaarSales ? L.udhaar : L.nagad}`);
+      }
       if (tt.payments) bits.push(`${L.paymentWord} ${fmt(tt.payments)}`);
       if (tt.expenses) bits.push(`${L.expenseWord} ${fmt(tt.expenses)}`);
       if (bits.length) lines.push(`${L.total}: ${bits.join(' · ')}`);

@@ -71,7 +71,7 @@ test('row corrections: rename learns alias, rate change recomputes, hatao remove
   ));
   const [card] = await handleMessage({ traderId: 'c', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
   assert.match(card, /1\. Gpt \(naya customer\).*⚠️ check/);
-  assert.match(card, /Kul: ₹400/);
+  assert.match(card, /Kul: ₹400 \(udhaar ₹300, nagad ₹100\)/);
   assert.match(card, /Sab sahi\?/);
   let [c2] = await say('c', '1 Gupta Dairy');
   assert.match(c2, /1\. Gupta Dairy · 10 kg × ₹30 = ₹300 · udhaar/);
