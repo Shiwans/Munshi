@@ -138,6 +138,10 @@ export function correctionPrompt(cardText) {
 
 const S = {
   hinglish: {
+    btnYes: '✅ Haan, likho',
+    btnNo: '❌ Nahi',
+    askShop: 'Aapki dukaan ka naam kya hai?',
+    tryExample: 'Ab likhiye jaise: "Sagar hotel 3 jalli 72kg 28 rate udhaar" — ya diary ka photo bhejiye.',
     confirmQ: 'haan likhu? (haan / sudharo)',
     photoFooter: 'Sab sahi? haan / "<n> <sudhaar>" / "<n> hatao"',
     saved: '✅ Likh diya.',
@@ -169,7 +173,7 @@ const S = {
     noEntries: 'Is period mein koi entry nahi.',
     customersTitle: 'Customers',
     noCustomers: 'Abhi koi customer nahi.',
-    welcome: 'Namaste! Main Munshi hoon — aapka hisaab-kitaab. Likhiye, bolke bhejiye ya diary ka photo bhejiye, jaise:\n"Sagar hotel 3 jalli 72kg 28 rate udhaar"\nBhasha badalne ke liye: /bhasha marathi',
+    welcome: 'Namaste! Main Munshi hoon — aapka hisaab-kitaab. 📒\nLikhiye, bolke bhejiye ya diary ka photo bhejiye. Har entry pehle aapko dikhaunga, aapke "haan" ke baad hi likhunga.\n\nKaunsi bhasha?',
     help: 'Kaise use kare:\n• Likhiye: "Sagar hotel 3 jalli 72kg 28 rate udhaar"\n• Voice note: "Sagar ne 1500 diye"\n• Diary page ka photo\n• Poochiye: "Sagar ka baaki", "aaj ka hisaab", "kaun kaun baaki hai", "Sagar ka statement"\n• Galti? "galti" / "undo"\n/bhasha · /export · /delete',
     undoQ: 'Ye entries cancel karu? (haan / nahi)',
     nothingToUndo: 'Cancel karne ko kuch nahi.',
@@ -194,6 +198,10 @@ const S = {
     exportCaption: 'Aapka pura khata (CSV).',
   },
   en: {
+    btnYes: '✅ Yes, save',
+    btnNo: '❌ No',
+    askShop: 'What is your shop called?',
+    tryExample: 'Now type something like "Sagar hotel 72kg 28 rate credit", or send a photo of your diary page.',
     confirmQ: 'Save it? (yes / correct)',
     photoFooter: 'All correct? yes / "<n> <fix>" / "<n> remove"',
     saved: '✅ Saved.',
@@ -225,7 +233,7 @@ const S = {
     noEntries: 'No entries in this period.',
     customersTitle: 'Customers',
     noCustomers: 'No customers yet.',
-    welcome: 'Hello! I am Munshi, your bookkeeper. Type, send a voice note, or a photo of your diary page, e.g.:\n"Sagar hotel 3 crates 72kg 28 rate credit"\nChange language: /bhasha hinglish',
+    welcome: 'Hello! I am Munshi, your bookkeeper. 📒\nType, send a voice note, or a photo of your diary page. I show every entry first and save only after your "yes".\n\nWhich language?',
     help: 'How to use:\n• Type: "Sagar hotel 72kg 28 rate credit"\n• Voice note: "Sagar paid 1500"\n• Photo of a diary page\n• Ask: "Sagar balance", "today\'s summary", "who owes", "Sagar statement"\n• Mistake? "undo"\n/bhasha · /export · /delete',
     undoQ: 'Cancel these entries? (yes / no)',
     nothingToUndo: 'Nothing to undo.',
@@ -250,6 +258,10 @@ const S = {
     exportCaption: 'Your full ledger (CSV).',
   },
   hi: {
+    btnYes: '✅ हाँ, लिखो',
+    btnNo: '❌ नहीं',
+    askShop: 'आपकी दुकान का नाम क्या है?',
+    tryExample: 'अब लिखिए जैसे: "सागर होटल 72 किलो 28 रेट उधार" — या डायरी की फ़ोटो भेजिए।',
     confirmQ: 'लिख दूँ? (हाँ / सुधारो)',
     photoFooter: 'सब सही? हाँ / "<n> <सुधार>" / "<n> हटाओ"',
     saved: '✅ लिख दिया।',
@@ -300,6 +312,10 @@ const S = {
     exportCaption: 'आपका पूरा खाता (CSV)।',
   },
   mr: {
+    btnYes: '✅ हो, लिहा',
+    btnNo: '❌ नाही',
+    askShop: 'तुमच्या दुकानाचं नाव काय?',
+    tryExample: 'आता लिहा जसं: "सागर हॉटेल 72 किलो 28 भाव उधार" — किंवा डायरीचा फोटो पाठवा.',
     confirmQ: 'लिहू का? (हो / दुरुस्त करा)',
     photoFooter: 'सगळं बरोबर? हो / "<n> <दुरुस्ती>" / "<n> काढा"',
     saved: '✅ लिहिलं.',
@@ -350,6 +366,10 @@ const S = {
     exportCaption: 'तुमचं पूर्ण खातं (CSV).',
   },
   gu: {
+    btnYes: '✅ હા, લખો',
+    btnNo: '❌ ના',
+    askShop: 'તમારી દુકાનનું નામ શું છે?',
+    tryExample: 'હવે લખો જેમ કે: "સાગર હોટેલ 72 કિલો 28 ભાવ ઉધાર" — અથવા ડાયરીનો ફોટો મોકલો.',
     confirmQ: 'લખી દઉં? (હા / સુધારો)',
     photoFooter: 'બધું બરાબર? હા / "<n> <સુધારો>" / "<n> કાઢો"',
     saved: '✅ લખી દીધું.',

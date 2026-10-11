@@ -41,7 +41,12 @@ async function main() {
     console.log('usage: munshi record "<line>" | confirm | cancel | undo | say "<msg>" | photo <file> | voice <file.ogg> | khata <name> | statement <name> | hisaab [today|yesterday|week|month] | customers');
     process.exit(cmd ? 1 : 0);
   }
-  for (const r of replies) console.log(typeof r === 'string' ? r : `[${r.document.filename}] ${r.caption}\n${r.document.data.toString('utf8')}`), console.log('');
+  for (const r of replies) {
+    if (typeof r === 'string') console.log(r);
+    else if (r.document) console.log(`[${r.document.filename}] ${r.caption}\n${r.document.data.toString('utf8')}`);
+    else console.log(r.text + (r.buttons ? '\n' + r.buttons.flat().map((b) => `[${b.label}]`).join(' ') : ''));
+    console.log('');
+  }
 }
 
 main().catch((err) => {

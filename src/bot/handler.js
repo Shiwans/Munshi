@@ -51,18 +51,31 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
   async function route({ data, input, image, L, firstTime }) {
     const say = (...r) => ({ replies: r });
 
-    if (/^\/start\b/.test(input)) return say(L.welcome);
+    if (/^\/start\b/.test(input)) return say(welcome(L));
     if (/^\/help\b/.test(input)) return say(L.help);
     if (/^\/(bhasha|language|lang)\b/.test(input)) {
       const lang = parseLang(input.split(/\s+/)[1]);
       if (!lang) return say(L.langAsk);
       data.profile.language = lang;
+      if (!data.profile.shopName && !data.pending) {
+        data.pending = { kind: 'onboard', createdAt: store.nowIST().ts };
+        return say(t(lang).langSet, t(lang).askShop);
+      }
       return say(t(lang).langSet);
     }
     if (/^\/export\b/.test(input)) return say(exportCsv(data, L));
     if (/^\/delete\b/.test(input)) {
       data.pending = { kind: 'delete', createdAt: store.nowIST().ts };
-      return say(L.deleteQ);
+      return say(yesNo(L.deleteQ, L));
+    }
+
+    // onboarding answer: a shop name has no digits; anything else is real business, so drop the question
+    if (data.pending?.kind === 'onboard') {
+      data.pending = null;
+      if (!image && input && !/\d/.test(input) && !input.startsWith('/') && input.length <= 60) {
+        data.profile.shopName = input.replace(/^(mera|meri|my|dukaan|dukan|shop)\s+(ka\s+naam|name|is)?\s*/i, '').trim();
+        return say(`${L.profileSaved} ${data.profile.shopName} 🙏`, L.tryExample);
+      }
     }
 
     // answers to a pending card
@@ -76,15 +89,15 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
         const m = input.match(ROW);
         if (m && Number(m[1]) >= 1 && Number(m[1]) <= data.pending.rows.length) {
           const handled = await correctRow(data, Number(m[1]) - 1, m[2].trim(), L);
-          if (handled) return say(renderCard(data, L));
+          if (handled) return say(cardReply(data, L));
         }
         if (/^(sab|all|सब|सगळ|બધ)\S*\s+(udhaar|udhar|credit|उधार|ઉધાર)$/i.test(input)) {
           data.pending.rows.forEach((r) => r.type === 'sale' && (r.paid = false));
-          return say(renderCard(data, L));
+          return say(cardReply(data, L));
         }
         if (/^(sab|all|सब|सगळ|બધ)\S*\s+(nagad|cash|paid|नकद|रोख|રોકડ)$/i.test(input)) {
           data.pending.rows.forEach((r) => r.type === 'sale' && (r.paid = true));
-          return say(renderCard(data, L));
+          return say(cardReply(data, L));
         }
         // free-text correction → model, with the card as context
         if (m || /\b(nahi|galat|sudhar|change|badlo|instead|not)\b/i.test(input)) {
@@ -100,7 +113,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       if (quick) return say(...quick);
     }
     const res = await modelTurn({ data, input, image, L });
-    if (firstTime && !image) res.replies.unshift(L.welcome);
+    if (firstTime && !image) res.replies.unshift(welcome(L));
     return res;
   }
 
@@ -153,13 +166,13 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
         data.pending.diaryProfile = data.pendingProfile;
         delete data.pendingProfile;
       }
-      replies.unshift(renderCard(data, L));
+      replies.unshift(cardReply(data, L));
     }
     delete data.pendingProfile;
 
     // a free-text answer may never carry numbers: every number the trader sees comes from code
     if (!replies.length) replies.push(res.text && !/\d/.test(res.text) ? res.text : image ? L.unreadable : L.notUnderstood);
-    replies[0] = prefix + replies[0];
+    if (prefix) replies[0] = withPrefix(replies[0], prefix);
     if (!image && !correcting && input) remember(data, input, recorded ? '(card shown to trader)' : '(answered from the khata)');
     return { replies };
   }
@@ -346,6 +359,30 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     return lines.join('\n');
   }
 
+  // Rich card: plain text (CLI, tests, other channels) + HTML for Telegram + tap buttons.
+  function cardReply(data, L, lead = '') {
+    const text = (lead ? lead + '\n\n' : '') + renderCard(data, L);
+    if (!data.pending) return text;
+    const problems = data.pending.rows.some(rowProblems);
+    const html = text
+      .split('\n')
+      .map((line) => {
+        const e = esc(line);
+        if (/^\d+\. /.test(line)) {
+          const [head, ...rest] = e.split(' · ');
+          const tail = rest.join(' · ').replace(/([^·]*= ₹[\d,.]+(?: → ₹[\d,.]+)?)/, '<code>$1</code>');
+          return `<b>${head}</b>${rest.length ? ' · ' + tail : ''}`;
+        }
+        if (/^\s+⚠️/.test(line)) return `   <i>${e.trim()}</i>`;
+        if (line.startsWith('📅') || line.startsWith(L.total + ':')) return `<b>${e}</b>`;
+        if (line === L.confirmQ || line === L.photoFooter) return `<i>${e}</i>`;
+        return e;
+      })
+      .join('\n');
+    const buttons = problems ? [[{ label: L.btnNo, data: 'nahi' }]] : [[{ label: L.btnYes, data: 'haan' }, { label: L.btnNo, data: 'nahi' }]];
+    return { text, html, buttons };
+  }
+
   // --- confirm / undo / delete -----------------------------------------------
   function confirm(data, L) {
     const p = data.pending;
@@ -366,7 +403,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const balances = balanceLines(data, p.customerIds, L);
       return { replies: [[L.undone, ...balances].join('\n')] };
     }
-    if (p.rows.some(rowProblems)) return { replies: [L.needFix + '\n\n' + renderCard(data, L)] };
+    if (p.rows.some(rowProblems)) return { replies: [cardReply(data, L, L.needFix)] };
 
     const { ts } = store.nowIST();
     const batch = store.newId('b');
@@ -406,7 +443,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
         batch,
       };
       const errors = ledger.validateEntry(entry);
-      if (errors.length) return { replies: [L.needFix + '\n\n' + renderCard(data, L)] };
+      if (errors.length) return { replies: [cardReply(data, L, L.needFix)] };
       saved.push(entry);
     }
     data.entries.push(...saved);
@@ -414,7 +451,8 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     const replies = [];
     if (saved.length > 3) {
       const dates = [...new Set(saved.map((e) => e.date))].sort();
-      replies.push(`${L.saved} (${saved.length})\n${hisaabReply(data, { from: dates[0], to: dates.at(-1) }, L)}`);
+      const hs = hisaabReply(data, { from: dates[0], to: dates.at(-1) }, L);
+      replies.push({ text: `${L.saved} (${saved.length})\n${hs.text}`, html: `${esc(L.saved)} (${saved.length})\n${hs.html}` });
     } else replies.push([L.saved, ...balanceLines(data, [...touched], L)].join('\n'));
     if (p.source === 'photo') {
       const firstPage = !data.profile.lastPage;
@@ -442,7 +480,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       createdAt: store.nowIST().ts,
     };
     const lines = batch.map((e, i) => `${i + 1}. ${entryLine(data, e, L)}`);
-    return { replies: [[...lines, L.undoQ].join('\n')] };
+    return { replies: [yesNo([...lines, L.undoQ].join('\n'), L)] };
   }
 
   return { handleMessage, _internals: { renderCard, rowLine } };
@@ -513,20 +551,25 @@ function hisaabReply(data, { period, from, to }, L) {
   const valid = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x || '');
   const r = valid(from) ? { from, to: valid(to) ? to : from, label: valid(to) && to !== from ? `${from} – ${to}` : from } : periodRange(period, today);
   const h = ledger.hisaab(data, r);
-  const lines = [L.hisaabTitle(r.label)];
-  if (!h.count) lines.push(L.noEntries);
-  else {
-    lines.push(`${L.sales}: ${fmt(h.sales)} (${L.nagad} ${fmt(h.cashSales)}, ${L.udhaar} ${fmt(h.udhaarSales)})`);
-    lines.push(`${L.payments}: ${fmt(h.payments)}`);
-    if (h.expenses) lines.push(`${L.expenses}: ${fmt(h.expenses)}`);
-    lines.push(`${L.cashInHand}: ${fmt(h.cashInHand)}`);
+  const rows = []; // [label, amount] pairs, rendered as text and as an aligned table
+  if (h.count) {
+    rows.push([L.sales, fmt(h.sales)], [`  ${L.nagad}`, fmt(h.cashSales)], [`  ${L.udhaar}`, fmt(h.udhaarSales)], [L.payments, fmt(h.payments)]);
+    if (h.expenses) rows.push([L.expenses, fmt(h.expenses)]);
+    rows.push([L.cashInHand, fmt(h.cashInHand)]);
   }
-  lines.push(`${L.totalDue}: ${fmt(h.totalDue)}`);
-  if (h.topDues.length) {
-    lines.push(`${L.topDues}:`);
-    for (const d of h.topDues) lines.push(`• ${store.getCustomer(data, d.customerId)?.name}: ${fmt(d.paise)}`);
-  }
-  return lines.join('\n');
+  rows.push([L.totalDue, fmt(h.totalDue)]);
+  const dues = h.topDues.map((d) => [`• ${store.getCustomer(data, d.customerId)?.name}`, fmt(d.paise)]);
+  const title = L.hisaabTitle(r.label);
+  const text = [title, ...(h.count ? [] : [L.noEntries]), ...rows.map(([a, b]) => `${a.trim()}: ${b}`), ...(dues.length ? [`${L.topDues}:`, ...dues.map(([a, b]) => `${a}: ${b}`)] : [])].join('\n');
+  const w = Math.max(...rows.map(([a, b]) => a.length + b.length)) + 2;
+  const table = rows.map(([a, b]) => a + ' '.repeat(Math.max(1, w - a.length - b.length)) + b).join('\n');
+  const html = [
+    `<b>📒 ${esc(title)}</b>`,
+    ...(h.count ? [] : [`<i>${esc(L.noEntries)}</i>`]),
+    `<pre>${esc(table)}</pre>`,
+    ...(dues.length ? [`<b>${esc(L.topDues)}</b>`, ...dues.map(([a, b]) => `${esc(a)} — <b>${esc(b)}</b>`)] : []),
+  ].join('\n');
+  return { text, html };
 }
 
 function customersReply(data, L) {
@@ -569,6 +612,27 @@ function exportCsv(data, L) {
     );
   }
   return { document: { filename: `munshi-khata-${store.nowIST().date}.csv`, data: Buffer.from(lines.join('\n'), 'utf8') }, caption: L.exportCaption };
+}
+
+const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function yesNo(text, L) {
+  return { text, buttons: [[{ label: L.btnYes, data: 'haan' }, { label: L.btnNo, data: 'nahi' }]] };
+}
+
+function welcome(L) {
+  return {
+    text: L.welcome,
+    buttons: [
+      [{ label: 'Hinglish', data: '/bhasha hinglish' }, { label: 'हिंदी', data: '/bhasha hi' }, { label: 'मराठी', data: '/bhasha mr' }],
+      [{ label: 'ગુજરાતી', data: '/bhasha gu' }, { label: 'English', data: '/bhasha en' }],
+    ],
+  };
+}
+
+function withPrefix(r, prefix) {
+  if (typeof r === 'string') return prefix + r;
+  return { ...r, text: prefix + r.text, ...(r.html ? { html: esc(prefix) + r.html } : {}) };
 }
 
 function remember(data, userText, botText) {

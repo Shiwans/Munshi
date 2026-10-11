@@ -1,7 +1,7 @@
 // Telegram adapter (grammy, long polling). Converts updates → handleMessage → replies. No logic lives here.
 
 import 'dotenv/config';
-import { Bot, InputFile } from 'grammy';
+import { Bot, InputFile, InlineKeyboard } from 'grammy';
 import { handleMessage } from './handler.js';
 import { loadImage } from '../ai/image.js';
 import { load } from '../core/store.js';
@@ -31,11 +31,45 @@ async function download(ctx) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+// Telegram caps a message at 4096 chars: split long cards on line breaks.
+function chunks(text, max = 3900) {
+  const out = [];
+  let cur = '';
+  for (const line of text.split('\n')) {
+    if (cur && cur.length + line.length + 1 > max) out.push(cur), (cur = '');
+    cur += (cur ? '\n' : '') + line;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+function keyboard(buttons) {
+  const kb = new InlineKeyboard();
+  buttons.forEach((row, i) => {
+    row.forEach((b) => kb.text(b.label, b.data));
+    if (i < buttons.length - 1) kb.row();
+  });
+  return kb;
+}
+
 async function send(ctx, replies) {
   for (const r of replies) {
     if (!r) continue;
-    if (typeof r === 'string') await ctx.reply(r);
-    else if (r.document) await ctx.replyWithDocument(new InputFile(r.document.data, r.document.filename), { caption: r.caption });
+    if (typeof r === 'string') {
+      for (const part of chunks(r)) await ctx.reply(part);
+    } else if (r.document) {
+      await ctx.replyWithDocument(new InputFile(r.document.data, r.document.filename), { caption: r.caption });
+    } else {
+      const parts = r.html && r.html.length <= 3900 ? [r.html] : chunks(r.text);
+      const html = parts.length === 1 && !!r.html && r.html.length <= 3900;
+      for (let i = 0; i < parts.length; i++) {
+        const last = i === parts.length - 1;
+        await ctx.reply(parts[i], {
+          ...(html ? { parse_mode: 'HTML' } : {}),
+          ...(last && r.buttons ? { reply_markup: keyboard(r.buttons) } : {}),
+        });
+      }
+    }
   }
 }
 
@@ -52,11 +86,19 @@ function run(ctx, build) {
       console.error('[telegram]', err.message);
       await ctx.reply(t(load(traderId).profile.language).tryAgain).catch(() => {});
     }
-    console.log(`[${traderId}] ${ctx.message.text ? 'text' : ctx.message.photo ? 'photo' : 'voice'} ${Date.now() - started} ms`);
+    const m = ctx.message || {};
+    console.log(`[${traderId}] ${ctx.callbackQuery ? 'tap' : m.text ? 'text' : m.photo || m.document ? 'photo' : 'voice'} ${Date.now() - started} ms`);
   });
 }
 
 bot.on('message:text', (ctx) => run(ctx, async () => ({ text: ctx.message.text })));
+
+// Tap on a card button = the same as typing it. The keyboard is removed so an old card can't be tapped twice.
+bot.on('callback_query:data', async (ctx) => {
+  await ctx.answerCallbackQuery().catch(() => {});
+  await ctx.editMessageReplyMarkup({ reply_markup: undefined }).catch(() => {});
+  return run(ctx, async () => ({ text: ctx.callbackQuery.data }));
+});
 
 bot.on(['message:photo', 'message:document'], (ctx) => {
   const doc = ctx.message.document;

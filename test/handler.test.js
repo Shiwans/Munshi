@@ -16,7 +16,8 @@ const calls = [];
 const chat = async (req) => { calls.push(req); return queue.shift() || { text: '', toolCalls: [] }; };
 const rec = (...entries) => ({ text: '', toolCalls: [{ name: 'record_entries', args: { entries } }] });
 const { handleMessage } = createHandler({ chat, today: () => '2026-10-11' });
-const say = async (traderId, text) => (await handleMessage({ traderId, text })).filter((r) => !/^Namaste/.test(r));
+const txt = (r) => (typeof r === 'string' ? r : r.text);
+const say = async (traderId, text) => (await handleMessage({ traderId, text })).map(txt).filter((r) => !/^Namaste/.test(r));
 
 test('text → card with working + naya customer → nothing saved until haan', async () => {
   queue.push(rec({ type: 'sale', customer: 'Sagar hotel', qtyLabel: '3 jalli', qty: 72, unit: 'kg', rate: 28, paid: false }));
@@ -69,7 +70,7 @@ test('row corrections: rename learns alias, rate change recomputes, hatao remove
     { type: 'sale', customer: 'Raju', qty: 5, unit: 'kg', rate: 20, paid: true },
     { type: 'expense', item: 'bhada', amount: 200 },
   ));
-  const [card] = await handleMessage({ traderId: 'c', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
+  const [card] = (await handleMessage({ traderId: 'c', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } })).map(txt);
   assert.match(card, /1\. Gpt \(naya customer\).*⚠️ check/);
   assert.match(card, /Kul: ₹400 \(udhaar ₹300, nagad ₹100\)/);
   assert.match(card, /Sab sahi\?/);
@@ -119,7 +120,7 @@ test('supplier learnt from a "<n> kharcha" correction: later rows with that name
   await say('s', 'haan');
   assert.deepEqual(store.load('s').profile.suppliers, ['AZK']);
   queue.push(rec({ type: 'sale', customer: 'AZK', qty: 20, rate: 1000, amount: 20000 }));
-  const [c2] = await handleMessage({ traderId: 's', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
+  const [c2] = (await handleMessage({ traderId: 's', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } })).map(txt);
   assert.match(c2, /kharcha · AZK · 20 × ₹1,000 = ₹20,000/);
   assert.doesNotMatch(c2, /naya/);
 });
@@ -129,7 +130,7 @@ test('voice: transcript is shown, then the same text path builds the card', asyn
   queue.push(rec({ type: 'payment', customer: 'Sagar', amount: 1500 }));
   const r = (await h.handleMessage({ traderId: 'a', audio: Buffer.from('x') }));
   assert.equal(r[0], 'Suna: "Sagar ne 1500 diye"');
-  assert.match(r[1], /payment mila · ₹1,500/);
+  assert.match(txt(r[1]), /payment mila · ₹1,500/);
   await h.handleMessage({ traderId: 'a', text: 'nahi' });
 });
 
@@ -155,4 +156,19 @@ test('a free-text model answer with numbers is never shown', async () => {
   const [r] = await say('a', 'Gupta 10 kg 40 nagad');
   assert.doesNotMatch(r, /₹400/);
   assert.match(r, /Samjha nahi/);
+});
+
+test('cards carry HTML + buttons; onboarding asks shop name after the language button', async () => {
+  queue.push(rec({ type: 'sale', customer: 'Sagar <b>', qty: 72, unit: 'kg', rate: 28, paid: false }));
+  const r = await handleMessage({ traderId: 'o', text: 'Sagar 72kg 28 udhaar' });
+  const card = r.find((x) => x.html);
+  assert.match(card.html, /<b>1\. Sagar &lt;b&gt; \(naya customer\)<\/b>/);
+  assert.match(card.html, /<code>72 kg × ₹28 = ₹2,016<\/code>/);
+  assert.deepEqual(card.buttons[0].map((b) => b.data), ['haan', 'nahi']);
+  await say('o', 'nahi');
+  const [, ask] = await say('o', '/bhasha hinglish');
+  assert.match(ask, /dukaan ka naam/);
+  const [ok] = await say('o', 'Laxmi Tomato Traders');
+  assert.match(ok, /Laxmi Tomato Traders/);
+  assert.equal(store.load('o').profile.shopName, 'Laxmi Tomato Traders');
 });
