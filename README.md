@@ -131,7 +131,7 @@ node src/cli.js hisaab today
 
 ## 2-minute demo
 1. Phone: `Sagar hotel 3 jalli 72kg 28 rate udhaar` → card with the working → tap ✅.
-2. Send the diary page → numbered rows → `4 3555` fixes the misread row → ✅ → "yaad rakh liya".
+2. Send the diary page (photo or scanner PDF) → numbered rows → fix the ⚠️ row by number (`11 hatao`, `4 3555`) → ✅ → "yaad rakh liya".
 3. Voice note "Sagar ne pandrah sau diye" → `Suna: …` → payment card → ✅.
 4. `Sagar ka baaki?` and `aaj ka hisaab`.
 5. Laptop: `MUNSHI_PROVIDER=local npm run dev`, repeat step 1 → same Munshi, nothing leaves the machine.
