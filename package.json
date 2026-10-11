@@ -1,0 +1,19 @@
+{
+  "name": "munshi",
+  "version": "0.1.0",
+  "description": "Telegram bookkeeper for small Indian traders: text, voice or a diary-page photo becomes a khata. Gemma 4 reads, code does the math.",
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "node src/bot/telegram.js",
+    "start": "node src/bot/telegram.js",
+    "test": "node --test test/",
+    "cli": "node src/cli.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.28.0",
+    "dotenv": "^17.2.1",
+    "grammy": "^1.46.0"
+  }
+}
