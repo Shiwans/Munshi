@@ -43,6 +43,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     }
 
     const out = await route({ data, input, image, L, firstTime });
+    if (out.wiped) store.removeBackups(traderId);
     if (out.save !== false) store.save(traderId, data);
     return [...replies, ...out.replies];
   }
@@ -390,7 +391,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const lang = data.profile.language;
       Object.assign(data, store.defaults());
       data.profile.language = lang;
-      return { replies: [L.deleted] };
+      return { replies: [L.deleted], wiped: true };
     }
     if (p.kind === 'undo') {
       const { ts } = store.nowIST();

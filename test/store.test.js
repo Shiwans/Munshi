@@ -34,3 +34,9 @@ test('customers: add, alias, find by exact/alias/normalised', () => {
   assert.equal(store.findCustomerByText(d, 'Gupta'), null);
   assert.ok(store.newId('e').startsWith('e_'));
 });
+
+test('every save also writes a dated backup snapshot', () => {
+  const d = store.load('bk'); d.profile.shopName = 'Backup Test'; store.save('bk', d);
+  const f = path.join(store.BACKUP_DIR, 'bk', `${store.nowIST().date}.json`);
+  assert.equal(JSON.parse(fs.readFileSync(f, 'utf8')).profile.shopName, 'Backup Test');
+});

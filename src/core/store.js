@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export const DATA_DIR = process.env.MUNSHI_DATA_DIR || path.join(ROOT, 'data');
+// Second copy: one snapshot per trader per day. Point MUNSHI_BACKUP_DIR at a synced folder or USB drive.
+export const BACKUP_DIR = process.env.MUNSHI_BACKUP_DIR || path.join(DATA_DIR, '..', 'backups');
 
 const safeId = (traderId) => String(traderId).replace(/[^a-zA-Z0-9_-]/g, '_');
 export const fileFor = (traderId) => path.join(DATA_DIR, `${safeId(traderId)}.json`);
@@ -47,13 +49,33 @@ export function save(traderId, data) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const f = fileFor(traderId);
   const tmp = `${f}.${process.pid}.${Date.now()}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  const json = JSON.stringify(data, null, 2);
+  fs.writeFileSync(tmp, json);
   fs.renameSync(tmp, f);
+  backup(traderId, json);
+}
+
+function backup(traderId, json) {
+  try {
+    const dir = path.join(BACKUP_DIR, safeId(traderId));
+    fs.mkdirSync(dir, { recursive: true });
+    const f = path.join(dir, `${nowIST().date}.json`);
+    const tmp = `${f}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, json);
+    fs.renameSync(tmp, f);
+  } catch (err) {
+    console.error('[backup]', err.message); // a failed backup never blocks the trader
+  }
 }
 
 export function remove(traderId) {
   const f = fileFor(traderId);
   if (fs.existsSync(f)) fs.unlinkSync(f);
+}
+
+// /delete means delete: the trader's backups go too.
+export function removeBackups(traderId) {
+  fs.rmSync(path.join(BACKUP_DIR, safeId(traderId)), { recursive: true, force: true });
 }
 
 // --- customers -------------------------------------------------------------

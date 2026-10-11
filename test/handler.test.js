@@ -172,3 +172,19 @@ test('cards carry HTML + buttons; onboarding asks shop name after the language b
   assert.match(ok, /Laxmi Tomato Traders/);
   assert.equal(store.load('o').profile.shopName, 'Laxmi Tomato Traders');
 });
+
+test('two traders are fully isolated: own customers, balances, and only their own data in the model prompt', async () => {
+  queue.push(rec({ type: 'sale', customer: 'Sagar', qty: 10, rate: 50, paid: false }));
+  await say('trader-A', 'Sagar 10 kg 50 udhaar'); await say('trader-A', 'haan');
+  queue.push(rec({ type: 'sale', customer: 'Sagar', qty: 2, rate: 30, paid: false }));
+  await say('trader-B', 'Sagar 2 kg 30 udhaar'); await say('trader-B', 'haan');
+  queue.push(rec({ type: 'sale', customer: 'Kamla', qty: 1, rate: 1, paid: true }));
+  await say('trader-B', 'Kamla 1 kg 1 nagad');
+  const prompt = calls.at(-1);
+  assert.doesNotMatch(prompt.system + JSON.stringify(prompt.messages), /10 kg 50/, 'B never sees A');
+  const [a] = await say('trader-A', 'Sagar ka baaki');
+  const [b] = await say('trader-B', 'Sagar ka baaki');
+  assert.match(a, /₹500/);
+  assert.match(b, /₹60/);
+  assert.notEqual(store.fileFor('trader-A'), store.fileFor('trader-B'));
+});
