@@ -86,7 +86,8 @@ TOTAL  55/57 customer rows exact (96%)
 4. **Learns each trader.** Aliases from corrections, a supplier list, the diary layout, and the last confirmed page as a
    worked example for the next photo.
 5. **Common lines and questions skip the model.** A code parser reads the lines traders type most (`Sagar hotel 3 jalli 72kg 28 rate udhaar`, `Sagar ne 1500 diye`); `haan`, row fixes, baaki, hisaab, statement and every slash command are answered by code in under a second. Gemma only sees what code can't read.
-6. **Swappable reader.** `provider.js` exposes one `chat()`; Gemma and Qwen implement it. If Gemma fails, Qwen answers and
+6. **Relevance gate before the model.** [`src/core/gate.js`](src/core/gate.js) lets only bookkeeping through (numbers, ledger words, known names, photos, voice, answers to a card). Off-topic text and "ignore your instructions" attempts get a polite template and never reach a model: no cost, no injection surface.
+7. **Swappable reader.** `provider.js` exposes one `chat()`; Gemma and Qwen implement it. If Gemma fails, Qwen answers and
    the reply says `(offline munshi)`.
 
 ## Architecture
@@ -99,13 +100,13 @@ TOTAL  55/57 customer rows exact (96%)
 ```
 
 ```
-src/core   ledger.js · money.js · parse.js · store.js · match.js · prompts.js
+src/core   ledger.js · money.js · parse.js · gate.js · report.js · store.js · match.js · prompts.js
 src/ai     provider.js · gemma.js · local.js · whisper.js · image.js
 src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
 src/cli.js            same handler from the terminal
 skills/munshi-ledger  Agent Skill (agentskills.io spec)
 eval/                 diary accuracy check (real pages vs answer key)
-test/                 node:test — 33 tests
+test/                 node:test — 35 tests
 ```
 
 **Storage**: one JSON file per trader, `data/<telegram-user-id>.json`, with `profile`, `customers`, `entries`,

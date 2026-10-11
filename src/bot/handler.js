@@ -8,6 +8,7 @@ import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
 import { parseLine } from '../core/parse.js';
+import { isRelevant } from '../core/gate.js';
 import { buildCsv, buildReport } from '../core/report.js';
 import * as provider from '../ai/provider.js';
 import { transcribe as whisper } from '../ai/whisper.js';
@@ -149,6 +150,13 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const res = { replies: [cardReply(data, L)] };
       if (firstTime) res.replies.unshift(welcome(L));
       return res;
+    }
+
+    // relevance gate: only bookkeeping reaches the model
+    if (!isRelevant(data, input, { hasMedia: !!image })) {
+      const out = [L.offTopic];
+      if (firstTime) out.unshift(welcome(L));
+      return say(...out);
     }
 
     const res = await modelTurn({ data, input, image, L });
