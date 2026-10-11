@@ -157,7 +157,8 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     }
     delete data.pendingProfile;
 
-    if (!replies.length) replies.push(res.text || (image ? L.unreadable : L.notUnderstood));
+    // a free-text answer may never carry numbers: every number the trader sees comes from code
+    if (!replies.length) replies.push(res.text && !/\d/.test(res.text) ? res.text : image ? L.unreadable : L.notUnderstood);
     replies[0] = prefix + replies[0];
     if (!image && !correcting && input) remember(data, input, recorded ? '(card shown to trader)' : '(answered from the khata)');
     return { replies };

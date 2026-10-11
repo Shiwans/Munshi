@@ -149,3 +149,10 @@ test('"usne" uses the last customer; the shop name is never a customer; model ca
   assert.equal(after.profile.diaryProfile, '');
   assert.ok(calls.at(-1).messages.length > 1, 'history sent');
 });
+
+test('a free-text model answer with numbers is never shown', async () => {
+  queue.push({ text: '1. Gupta · 10 kg × ₹40 = ₹400 · haan?', toolCalls: [] });
+  const [r] = await say('a', 'Gupta 10 kg 40 nagad');
+  assert.doesNotMatch(r, /₹400/);
+  assert.match(r, /Samjha nahi/);
+});

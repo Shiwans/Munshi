@@ -26,8 +26,8 @@ export async function chat({ system, messages, tools = [], images = [] }) {
     contents,
     config: {
       systemInstruction: system,
-      // tools are mandatory: the model may only answer through a tool, never with free-text numbers
-      ...(tools.length ? { tools: [{ functionDeclarations: tools }], toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } } : {}),
+      // AUTO, not ANY: forcing a call made Gemma drop fields (customer, qty). Free-text numbers are blocked in handler.js.
+      ...(tools.length ? { tools: [{ functionDeclarations: tools }], toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.AUTO } } } : {}),
       thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       temperature: 0.1,
     },
