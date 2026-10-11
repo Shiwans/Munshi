@@ -60,7 +60,7 @@ bot.on('message:text', (ctx) => run(ctx, async () => ({ text: ctx.message.text }
 
 bot.on(['message:photo', 'message:document'], (ctx) => {
   const doc = ctx.message.document;
-  if (doc && !/^image\//.test(doc.mime_type || '')) return;
+  if (doc && !/^image\/|^application\/pdf$/.test(doc.mime_type || '')) return;
   return run(ctx, async (traderId) => {
     await ctx.reply(t(load(traderId).profile.language).ackPhoto);
     return { text: ctx.message.caption || '', image: await loadImage(await download(ctx)) };

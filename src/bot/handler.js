@@ -171,12 +171,24 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       qtyLabel: e.qtyLabel || null,
       ratePaise: toPaise(num(e.rate)),
       statedPaise: toPaise(num(e.amount)),
+      parts: null,
       chosenPaise: null,
       paid: type === 'sale' ? e.paid === true : null,
       item: e.item || null,
       note: e.note || null,
+      supplier: type === 'expense' ? (e.supplier || '').trim() || null : null,
       confidence: typeof e.confidence === 'number' ? e.confidence : 1,
     };
+    const parts = (Array.isArray(e.parts) ? e.parts : [])
+      .map((x) => ({ qty: num(x.qty), ratePaise: toPaise(num(x.rate)) }))
+      .filter((x) => x.qty !== null && x.ratePaise !== null);
+    if (parts.length > 1) row.parts = parts;
+    else if (parts.length === 1 && row.qty === null) Object.assign(row, { qty: parts[0].qty, ratePaise: parts[0].ratePaise });
+    // learnt suppliers: their rows are the trader's own purchases/payments, never customer udhaar
+    const sup = row.customerText && supplierOf(data, row.customerText);
+    if (sup) Object.assign(row, { type: 'expense', supplier: sup, customerText: null, paid: null, note: row.note || (e.type === 'payment' ? 'jama' : null) });
+    // "39⟩" with nothing after: a lone quantity echoed back as the amount is not an amount
+    if (row.ratePaise === null && !row.parts && row.qty !== null && row.statedPaise === toPaise(row.qty)) row.statedPaise = null;
     await resolveCustomer(data, row);
     return computeRow(row);
   }
@@ -201,15 +213,24 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     }
     if (/^(udhaar|udhar|credit|baaki|उधार|ઉધાર)$/.test(f)) return (row.paid = false), true;
     if (/^(nagad|cash|paid|upi|नकद|रोख|રોકડ)$/.test(f)) return (row.paid = true), true;
+    if (/^(kharcha|kharch|expense|kharid|purchase|खर्चा|खर्च|ખર્ચ)$/.test(f)) {
+      const was = row.type;
+      if (row.customerText) row.supplier = row.customerText;
+      Object.assign(row, { type: 'expense', customerText: null, customerId: null, isNew: false, paid: null });
+      if (was === 'payment' && !row.note) row.note = 'jama';
+      return computeRow(row), true;
+    }
     if (/^(payment|jama|diye|mila)$/.test(f)) return (row.type = 'payment'), (row.paid = null), computeRow(row), true;
     let m;
     if ((m = f.match(/^(?:rate|bhav|bhaav|भाव|रेट|ભાવ)\s*₹?\s*([\d.,]+)$/) || f.match(/^₹?\s*([\d.,]+)\s*(?:rate|bhav|ka rate)$/))) {
       row.ratePaise = toPaise(m[1]);
+      row.parts = null;
       row.chosenPaise = null;
       return computeRow(row), true;
     }
     if ((m = f.match(/^(?:qty|wajan|vajan|वजन)?\s*([\d.]+)\s*(kg|kilo|किलो|pcs|nag|dozen|crate|peti)$/))) {
       row.qty = Number(m[1]);
+      row.parts = null;
       row.unit = /kilo|किलो/.test(m[2]) ? 'kg' : m[2];
       row.chosenPaise = null;
       return computeRow(row), true;
@@ -234,10 +255,10 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
   function computeRow(row) {
     if (row.chosenPaise !== null && row.chosenPaise !== undefined) {
       row.amountPaise = row.chosenPaise;
-      row.computedPaise = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, amountPaise: null }).computedPaise;
+      row.computedPaise = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, parts: row.parts, amountPaise: null }).computedPaise;
       row.conflict = false;
     } else {
-      const r = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, amountPaise: row.statedPaise });
+      const r = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, parts: row.parts, amountPaise: row.statedPaise });
       Object.assign(row, { amountPaise: r.amountPaise, computedPaise: r.computedPaise, conflict: r.conflict });
     }
     return row;
@@ -250,7 +271,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
   function rowLine(data, row, i, L) {
     const parts = [];
     const cust = row.customerId ? store.getCustomer(data, row.customerId).name : row.customerText;
-    if (row.type === 'expense') parts.push(L.expenseWord + (row.item ? ` · ${row.item}` : row.note ? ` · ${row.note}` : ''));
+    if (row.type === 'expense') parts.push([L.expenseWord, row.supplier, row.item, row.note].filter(Boolean).join(' · '));
     else {
       let who = cust || L.missingCust;
       if (row.customerId && row.customerText && cust.toLowerCase() !== row.customerText.toLowerCase()) who = `${row.customerText} → ${cust}`;
@@ -260,8 +281,9 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     if (row.type === 'payment') parts.push(L.paymentWord);
     if (row.qtyLabel) parts.push(row.qtyLabel);
     if (row.type === 'sale' && row.item && !row.qtyLabel) parts.push(row.item);
-    if (row.qty !== null && row.ratePaise !== null && row.computedPaise !== null) {
-      const working = `${fmtQty(row.qty, row.unit)} × ${fmt(row.ratePaise)} = ${fmt(row.computedPaise)}`;
+    if (row.computedPaise !== null && row.computedPaise !== undefined) {
+      const pieces = row.parts?.length ? row.parts : [{ qty: row.qty, ratePaise: row.ratePaise }];
+      const working = `${pieces.map((x) => `${fmtQty(x.qty, pieces.length > 1 ? null : row.unit)} × ${fmt(x.ratePaise)}`).join(' + ')} = ${fmt(row.computedPaise)}`;
       if (row.conflict) parts.push(working);
       else if (row.amountPaise !== row.computedPaise) parts.push(`${working} → ${fmt(row.amountPaise)}`);
       else parts.push(working);
@@ -270,7 +292,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       if (Number.isInteger(row.amountPaise)) parts.push(fmt(row.amountPaise));
     } else if (Number.isInteger(row.amountPaise)) parts.push(fmt(row.amountPaise));
     if (row.type === 'sale') parts.push(row.paid ? L.nagad : L.udhaar);
-    if (row.date !== today()) parts.push(row.date.slice(8, 10) + '/' + row.date.slice(5, 7));
+    if (row.date !== today() && !row.dateInHeader) parts.push(row.date.slice(8, 10) + '/' + row.date.slice(5, 7));
     let line = `${i + 1}. ${parts.join(' · ')}`;
     if (row.conflict) line += `\n   ${L.conflict(fmt(row.computedPaise), fmt(row.statedPaise))}`;
     else if (!Number.isInteger(row.amountPaise) || row.amountPaise <= 0) line += ` ${L.missingAmt}`;
@@ -279,7 +301,18 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
   }
 
   function cardText(data, L) {
-    return data.pending.rows.map((r, i) => rowLine(data, r, i, L)).join('\n');
+    const rows = data.pending.rows;
+    if (data.pending.source === 'photo') {
+      // on a page where most sales show qty × rate, a sale with a bare number is probably a misread quantity
+      const sales = rows.filter((r) => r.type === 'sale');
+      const withWorking = sales.filter((r) => r.computedPaise !== null && r.computedPaise !== undefined).length;
+      if (withWorking * 2 > sales.length) sales.forEach((r) => (r.computedPaise === null || r.computedPaise === undefined) && r.chosenPaise == null && (r.confidence = Math.min(r.confidence, 0.5)));
+    }
+    const dates = new Set(rows.map((r) => r.date));
+    const shared = rows.length > 1 && dates.size === 1 && rows[0].date !== today() ? rows[0].date : null;
+    rows.forEach((r) => (r.dateInHeader = !!shared));
+    const body = rows.map((r, i) => rowLine(data, r, i, L)).join('\n');
+    return shared ? `📅 ${shared.slice(8, 10)}/${shared.slice(5, 7)}/${shared.slice(0, 4)}\n${body}` : body;
   }
 
   function renderCard(data, L) {
@@ -351,8 +384,10 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
         qty: r.qty,
         unit: r.unit,
         ratePaise: r.ratePaise,
+        parts: r.parts || null,
         qtyLabel: r.qtyLabel,
         note: r.note,
+        supplier: r.supplier || null,
         raw: p.raw || null,
         source: p.source,
         reverses: null,
@@ -363,13 +398,17 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       saved.push(entry);
     }
     data.entries.push(...saved);
-    const replies = [[L.saved, ...balanceLines(data, [...touched], L)].join('\n')];
+    data.profile.suppliers = [...new Set([...(data.profile.suppliers || []), ...saved.map((e) => e.supplier).filter(Boolean)])];
+    const replies = [];
+    if (saved.length > 3) {
+      const dates = [...new Set(saved.map((e) => e.date))].sort();
+      replies.push(`${L.saved} (${saved.length})\n${hisaabReply(data, { from: dates[0], to: dates.at(-1) }, L)}`);
+    } else replies.push([L.saved, ...balanceLines(data, [...touched], L)].join('\n'));
     if (p.source === 'photo') {
+      const firstPage = !data.profile.lastPage;
       data.profile.lastPage = cardText(data, L).slice(0, 1500);
-      if (p.diaryProfile && !data.profile.diaryProfile) {
-        data.profile.diaryProfile = p.diaryProfile;
-        replies.push(L.remembered);
-      }
+      if (p.diaryProfile && !data.profile.diaryProfile) data.profile.diaryProfile = p.diaryProfile;
+      if (firstPage) replies.push(L.remembered);
     }
     data.pending = null;
     return { replies };
@@ -518,6 +557,11 @@ function exportCsv(data, L) {
     );
   }
   return { document: { filename: `munshi-khata-${store.nowIST().date}.csv`, data: Buffer.from(lines.join('\n'), 'utf8') }, caption: L.exportCaption };
+}
+
+function supplierOf(data, name) {
+  const n = store.normaliseName(name);
+  return (data.profile.suppliers || []).find((s) => store.normaliseName(s) === n) || null;
 }
 
 function detectLang(text, current) {

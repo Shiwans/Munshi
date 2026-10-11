@@ -31,7 +31,13 @@ const ENTRY = {
     qtyLabel: { type: 'string', description: 'Packaging count as written, e.g. "3 jalli", "2 crate"' },
     rate: { type: 'number', description: 'Rate per unit in rupees, as written' },
     amount: { type: 'number', description: 'Total in rupees ONLY if explicitly written. Never compute it.' },
+    parts: {
+      type: 'array',
+      description: 'Only when one row has several qty×rate pieces, e.g. "31⟩50 + 20⟩30 = 2150" → [{qty:31,rate:50},{qty:20,rate:30}], amount 2150',
+      items: { type: 'object', properties: { qty: { type: 'number' }, rate: { type: 'number' } } },
+    },
     paid: { type: 'boolean', description: 'For sale: false when udhaar/baaki/credit/khata, true when cash/nagad/paid/UPI' },
+    supplier: { type: 'string', description: 'For expense only: supplier/wholesaler name or initials as written (e.g. "BA", "SK")' },
     item: { type: 'string', description: 'What was sold/bought, e.g. tomato' },
     note: { type: 'string' },
     confidence: { type: 'number', description: '0-1, how sure you are this row was read correctly' },
@@ -96,13 +102,20 @@ export function systemPrompt(data, { today, photo = false } = {}) {
     'Example: "Sagar hotel 3 jalli 72kg 28 rate udhaar" → record_entries {type:sale, customer:"Sagar hotel", qtyLabel:"3 jalli", qty:72, unit:"kg", rate:28, paid:false}.',
     'Questions about balances, totals or customers → call the matching query tool. Do not answer numbers yourself.',
   ];
+  if (p.suppliers?.length) lines.push(`Trader's suppliers (rows with these names are ALWAYS type expense with supplier set, never customers): ${p.suppliers.join(', ')}.`);
   if (p.diaryProfile) lines.push(`How this trader writes the diary: ${p.diaryProfile}`);
   if (p.lastPage) lines.push(`Last confirmed diary page (as text), for reference:\n${p.lastPage}`);
   if (photo) {
     lines.push(
-      'The image is a page of the trader\'s handwritten diary (or a chit/bill/screenshot). Read EVERY row top to bottom and call record_entries once with all rows in order.',
-      'Keep the original spelling of names. Set confidence 0-1 per row. If a number is unreadable, leave it out rather than guessing.',
-      'Cross-outs/strikethroughs mean the row is cancelled — skip them. A date written at the top applies to all rows.',
+      'The image is a page of the trader\'s handwritten diary (or a chit, bill or screenshot). Layouts differ per trader; read it as the trader would.',
+      'Read EVERY row top to bottom and call record_entries ONCE with all rows in order. Use the date printed or written at the top of the page for every row.',
+      'Keep names exactly as written, in the original script (e.g. Devanagari). Never translate or "fix" a name.',
+      'For every row give qty, rate AND amount exactly as written, all three — code re-checks the diary\'s arithmetic. If only a quantity is written (e.g. "39⟩" with nothing after), give qty only and NO amount. A bare number is never an amount unless it is a total.',
+      'Common notations: "45⟩45 = 2025" or "45)45" or "45 @ 45" or "45 x 45" means qty 45 at rate 45, total 2025. "56½" = 56.5. "5000/-" = ₹5000. Several pieces joined by "+" → use parts.',
+      'A separate amount on the same row in another column (often the middle one) is usually money received from that customer (jama/cash/cheque) → add a separate payment entry for that customer.',
+      'A separate block for a supplier or wholesaler (e.g. initials like "BA", "SK" with qty × rate, or "जमा"/"paid" amounts) is the trader\'s purchase or payment to that supplier → type expense with supplier set (both purchases "15 × 1100" and payments "जमा 27500").',
+      'Rows with a name but missing numbers: still include them with what is readable. Unclear digit → leave the number out, set confidence low. Never invent or calculate totals.',
+      'Crossed-out rows are cancelled → skip. Default for a customer sale: paid=false (udhaar) unless marked cash/nagad.',
     );
     if (!p.diaryProfile) lines.push('Also call update_profile with diaryProfile: one or two sentences describing the column order, abbreviations, units and script on this page.');
   }

@@ -74,15 +74,31 @@ export function hisaab(data, { from, to }) {
   };
 }
 
-// Resolve the amount of a draft entry from what the trader gave. Returns { amountPaise, computedPaise, conflict }.
-// - qty & rate given → computed; if a stated amount also exists and differs → conflict (nothing to save until answered).
+// Resolve the amount of a draft entry from what the trader gave. Returns { amountPaise, computedPaise, conflict, rounded }.
+// - qty & rate given (or several parts: 31⟩50 + 20⟩30) → computed; a stated amount that differs → conflict (ask, never guess).
+// - Diaries round to the rupee (30½ × ₹55 = 1677.50 written as 1678): a whole-rupee stated amount within ₹1 is accepted.
 // - only stated amount → stated.
-export function resolveAmount({ qty, ratePaise, amountPaise }) {
-  const computed = mulPaise(qty, ratePaise);
-  if (computed !== null && amountPaise !== null && amountPaise !== undefined && computed !== amountPaise) {
-    return { amountPaise: null, computedPaise: computed, conflict: true };
+export function computeParts(parts) {
+  if (!parts || !parts.length) return null;
+  let sum = 0;
+  for (const p of parts) {
+    const v = mulPaise(p.qty, p.ratePaise);
+    if (v === null) return null;
+    sum += v;
   }
-  return { amountPaise: computed ?? amountPaise ?? null, computedPaise: computed, conflict: false };
+  return sum;
+}
+
+export function resolveAmount({ qty, ratePaise, amountPaise, parts }) {
+  const computed = parts && parts.length ? computeParts(parts) : mulPaise(qty, ratePaise);
+  const stated = amountPaise === undefined ? null : amountPaise;
+  if (computed !== null && stated !== null && computed !== stated) {
+    if (stated % 100 === 0 && Math.abs(computed - stated) < 100) {
+      return { amountPaise: stated, computedPaise: computed, conflict: false, rounded: true };
+    }
+    return { amountPaise: null, computedPaise: computed, conflict: true, rounded: false };
+  }
+  return { amountPaise: computed ?? stated ?? null, computedPaise: computed, conflict: false, rounded: false };
 }
 
 // Build the reversing entry for a confirmed entry.

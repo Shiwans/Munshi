@@ -64,10 +64,10 @@ test('khata gives opening, running and closing balance for a period', () => {
 });
 
 test('resolveAmount computes qty×rate, flags conflicts, falls back to stated amount', () => {
-  assert.deepEqual(resolveAmount({ qty: 72, ratePaise: 2800, amountPaise: null }), { amountPaise: 201600, computedPaise: 201600, conflict: false });
-  assert.deepEqual(resolveAmount({ qty: 72, ratePaise: 2800, amountPaise: 200000 }), { amountPaise: null, computedPaise: 201600, conflict: true });
+  assert.deepEqual(resolveAmount({ qty: 72, ratePaise: 2800, amountPaise: null }), { amountPaise: 201600, computedPaise: 201600, conflict: false, rounded: false });
+  assert.deepEqual(resolveAmount({ qty: 72, ratePaise: 2800, amountPaise: 200000 }), { amountPaise: null, computedPaise: 201600, conflict: true, rounded: false });
   assert.deepEqual(resolveAmount({ qty: 72, ratePaise: 2800, amountPaise: 201600 }).conflict, false);
-  assert.deepEqual(resolveAmount({ qty: null, ratePaise: null, amountPaise: 150000 }), { amountPaise: 150000, computedPaise: null, conflict: false });
+  assert.deepEqual(resolveAmount({ qty: null, ratePaise: null, amountPaise: 150000 }), { amountPaise: 150000, computedPaise: null, conflict: false, rounded: false });
 });
 
 test('validateEntry catches bad type, zero amount, missing customer', () => {
@@ -86,4 +86,15 @@ test('draftTotals splits cash/udhaar and counts missing amounts', async () => {
     { type: 'sale', amountPaise: null, paid: false },
   ]);
   assert.deepEqual(t, { sales: 251600, cashSales: 50000, udhaarSales: 201600, payments: 150000, expenses: 20000, missing: 1 });
+});
+
+test('multi-part rows are summed by code; diary rounding to the rupee is accepted, real mismatches are not', async () => {
+  const { resolveAmount } = await import('../src/core/ledger.js');
+  const parts = [{ qty: 23, ratePaise: 3000 }, { qty: 34, ratePaise: 4500 }, { qty: 55, ratePaise: 5500 }];
+  assert.equal(resolveAmount({ parts, amountPaise: 524500 }).amountPaise, 524500);
+  assert.equal(resolveAmount({ parts, amountPaise: 524500 }).conflict, false);
+  const r = resolveAmount({ qty: 30.5, ratePaise: 5500, amountPaise: 167800 });
+  assert.deepEqual([r.amountPaise, r.conflict, r.rounded], [167800, false, true]);
+  // 51⟩45 + 30⟩30 = 3195, not 3555 → misread digit, must ask
+  assert.equal(resolveAmount({ parts: [{ qty: 51, ratePaise: 4500 }, { qty: 30, ratePaise: 3000 }], amountPaise: 355500 }).conflict, true);
 });

@@ -110,3 +110,16 @@ test('nahi clears the card; /bhasha switches language', async () => {
   assert.match(card, /नवीन ग्राहक/);
   assert.match(card, /लिहू का/);
 });
+
+test('supplier learnt from a "<n> kharcha" correction: later rows with that name become expenses', async () => {
+  queue.push(rec({ type: 'payment', customer: 'AZK', amount: 27500 }, { type: 'sale', customer: 'Ramu', qty: 10, rate: 50, amount: 500 }));
+  await handleMessage({ traderId: 's', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
+  const [c] = await say('s', '1 kharcha');
+  assert.match(c, /1\. kharcha · AZK · jama · ₹27,500/);
+  await say('s', 'haan');
+  assert.deepEqual(store.load('s').profile.suppliers, ['AZK']);
+  queue.push(rec({ type: 'sale', customer: 'AZK', qty: 20, rate: 1000, amount: 20000 }));
+  const [c2] = await handleMessage({ traderId: 's', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
+  assert.match(c2, /kharcha · AZK · 20 × ₹1,000 = ₹20,000/);
+  assert.doesNotMatch(c2, /naya/);
+});
