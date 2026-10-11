@@ -7,6 +7,7 @@ import * as ledger from '../core/ledger.js';
 import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
+import { parseLine } from '../core/parse.js';
 import * as provider from '../ai/provider.js';
 import { transcribe as whisper } from '../ai/whisper.js';
 
@@ -15,7 +16,7 @@ const NO = /^(nahi|nahin|na|no|n|cancel|hatao|chhodo|rehne do|रहने द�
 const UNDO = /^(galti|galti ho gayi|undo|galat|गलती|चूक|ભૂલ)[\s.!]*$/i;
 const ROW = /^(\d{1,2})[\s.):-]+(.+)$/s;
 
-export function createHandler({ chat = provider.chat, transcribe = null, today = () => store.nowIST().date } = {}) {
+export function createHandler({ chat = provider.chat, transcribe = null, today = () => store.nowIST().date, parse = parseLine } = {}) {
   async function handleMessage({ traderId, text = '', image = null, audio = null }) {
     const data = store.load(traderId);
     const firstTime = !store.exists(traderId);
@@ -113,6 +114,17 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const quick = await quickQuery(data, input, L);
       if (quick) return say(...quick);
     }
+    // the lines traders type most are parsed by code: no model, no hallucination, same card every time
+    const parsed = !image && parse(input);
+    if (parsed) {
+      data.pending = { kind: 'entries', source: 'text', raw: input, via: 'parser', createdAt: store.nowIST().ts, rows: [] };
+      for (const e of parsed) data.pending.rows.push(await draftRow(data, e));
+      remember(data, input, '(card shown to trader)');
+      const res = { replies: [cardReply(data, L)] };
+      if (firstTime) res.replies.unshift(welcome(L));
+      return res;
+    }
+
     const res = await modelTurn({ data, input, image, L });
     if (firstTime && !image) res.replies.unshift(welcome(L));
     return res;
