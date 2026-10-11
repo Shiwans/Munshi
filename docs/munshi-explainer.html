@@ -162,7 +162,7 @@ haan likhu? (haan / sudharo)</div>
       </div>
       <div class="steps">
         <div class="step"><div><h3>Telegram delivers the message<span class="who code">adapter</span></h3><p class="muted"><code>telegram.js</code> long-polls Telegram from the laptop, so there is no webhook and no tunnel. Photos are shrunk to 1280 px. Voice notes go through Whisper on the laptop first.</p></div></div>
-        <div class="step"><div><h3>Easy messages never reach a model<span class="who code">code</span></h3><p class="muted"><code>haan</code>, <code>nahi</code>, <code>13 hatao</code>, <code>4 rate 30</code>, <code>galti</code>, <code>X ka baaki</code>, <code>aaj ka hisaab</code> are matched by rules in <code>handler.js</code>. Answer in under a second.</p></div></div>
+        <div class="step"><div><h3>Easy messages never reach a model<span class="who code">code</span></h3><p class="muted">A parser reads the lines traders type most (<code>Sagar hotel 3 jalli 72kg 28 rate udhaar</code>, <code>Sagar ne 1500 diye</code>). <code>haan</code>, <code>13 hatao</code>, <code>4 rate 30</code>, <code>galti</code>, <code>X ka baaki</code>, <code>aaj ka hisaab</code> and every slash command are handled in <code>handler.js</code>. Instant, and nothing to hallucinate.</p></div></div>
         <div class="step"><div><h3>Gemma reads the rest<span class="who ai">model</span></h3><p class="muted">One call with function calling. It must answer through a tool: <code>record_entries</code>, <code>get_khata</code>, <code>get_hisaab</code>, <code>statement</code>, <code>reply</code>. It extracts qty, rate and any written total. It never adds or multiplies.</p></div></div>
         <div class="step"><div><h3>Code builds the card<span class="who code">code</span></h3><p class="muted">Names are matched to existing customers (alias, then spelling distance, then embeddings). <code>ledger.js</code> computes 72 × ₹28 in integer paise. If the diary's own total differs, the card asks which one is right.</p></div></div>
         <div class="step"><div><h3>The trader says haan<span class="who you">trader</span></h3><p class="muted">Only now are entries written and new customers created. Before that, the card lives in <code>pending</code> and can be corrected by row number.</p></div></div>
@@ -285,6 +285,11 @@ haan likhu? (haan / sudharo)</div>
         </tbody>
       </table>
     </div>
+    <div class="grid3">
+      <div class="box model k"><span class="name">55 / 57</span><h3>customer rows exact (96%)</h3><p>Three real pages, scored by <code>eval/run.js</code> against a hand-checked answer key.</p></div>
+      <div class="box model"><span class="name">7</span><h3>misreads flagged ⚠️</h3><p>Wrong digits or missing amounts that the card refused to save until the trader answered.</p></div>
+      <div class="box model l"><span class="name">0</span><h3>wrong and unflagged</h3><p>The only kind of row a trader could save by mistake. None on any page.</p></div>
+    </div>
     <p class="muted">On the second page every returning customer matched the first page's khata. Nobody was created twice. Corrections like <code>18 AZK</code> then <code>18 kharcha</code> teach Munshi that AZK is a supplier, permanently.</p>
   </section>
 
@@ -330,6 +335,7 @@ haan likhu? (haan / sudharo)</div>
   <span class="k">"history"</span>: [ … ]     <span class="c">// last 3 turns, text only, so "usne" resolves</span>
 }</pre>
     </div>
+    <p class="muted">Every save also writes a dated snapshot to <code>backups/&lt;trader&gt;/&lt;date&gt;.json</code> (point <code>MUNSHI_BACKUP_DIR</code> at a synced folder). <code>/delete</code> moves the khata to <code>trash/</code> and <code>/wapas</code> brings it back. Each trader only ever sees their own file: every model call is built from that trader's data alone.</p>
     <p class="muted">Three entry types cover any small trade: <code>sale</code> (cash or udhaar), <code>payment</code> (received), <code>expense</code> (own costs and supplier purchases). Balance = udhaar sales − payments, computed on every question. <code>/export</code> sends a CSV; <code>/delete</code> wipes the file after a yes.</p>
   </section>
 
@@ -337,9 +343,9 @@ haan likhu? (haan / sudharo)</div>
     <span class="eyebrow">Where it is going</span>
     <h2>Built today, next, later</h2>
     <div class="road">
-      <div class="row"><span class="state done">Built</span><span>Text, photo (incl. scanner PDFs) and voice on Telegram · confirm card with working · row corrections · undo · khata, hisaab, statement · supplier and alias learning · Hinglish/hi/mr/gu/en · Gemma ↔ Qwen fallback · tap buttons, formatted cards, onboarding · agent skill · 26 tests</span></div>
+      <div class="row"><span class="state done">Built</span><span>Text, photo (incl. scanner PDFs) and voice on Telegram · confirm card with working · row corrections · undo · khata, hisaab, statement · supplier and alias learning · Hinglish/hi/mr/gu/en · Gemma ↔ Qwen fallback · tap buttons, formatted cards, onboarding · agent skill · code parser for common lines · /baaki /hisaab /statement /undo /wapas · backups + soft delete · 96% on real diary pages · 32 tests</span></div>
       <div class="row"><span class="state next">Next</span><span>WhatsApp adapter (one more file; the handler is channel-agnostic) · reminders for old udhaar</span></div>
-      <div class="row"><span class="state later">Later</span><span>PDF statement to forward · several users per shop · item-wise rate history · backups</span></div>
+      <div class="row"><span class="state later">Later</span><span>SQLite event log · udhaar ageing reminders · supplier khata · item-wise rate history · several users per shop</span></div>
     </div>
   </section>
 
