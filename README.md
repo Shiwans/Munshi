@@ -4,6 +4,9 @@
 messages to themselves. Munshi lives in that chat: a Hinglish line, a voice note, or a photo of the diary page becomes a
 proper khata (customers, udhaar, payments, daily hisaab). The trader checks every entry before anything is saved.
 
+**Who it is for:** traders whose only tech is WhatsApp. No app to learn, no forms, no menus: if they can send a
+message, a voice note or a photo, they can keep a proper khata. The demo runs on Telegram; WhatsApp is the goal.
+
 > **Gemma reads. Code counts. The trader confirms.**
 
 **Project page:** https://shiwans.github.io/Munshi/ · **Bot:** [@shiwans_munshi_bot](https://t.me/shiwans_munshi_bot) (runs while the demo laptop is on)
