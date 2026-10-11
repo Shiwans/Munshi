@@ -115,6 +115,12 @@ td.mono { font-family: var(--mono); white-space: nowrap; font-size: .82rem; }
 .road .row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding-block: 10px; border-bottom: 1px solid var(--rule); }
 .state { font: 600 .7rem/1.9 var(--body); letter-spacing: .08em; text-transform: uppercase; }
 .state.now { color: var(--ok); } .state.next { color: var(--violet); } .state.later { color: var(--muted); }
+/* why not apps */
+.vs th:first-child { width: 22%; }
+.vs td:last-child { background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.vs th:last-child { color: var(--ok); }
+.vs td:first-child { font-weight: 600; }
+.shift { font-family: var(--display); font-size: clamp(1.2rem, 2.6vw, 1.5rem); border-left: 3px solid var(--ok); padding-left: 14px; }
 footer { padding-block: 52px 0; font-size: .86rem; color: var(--muted); display: grid; gap: 6px; }
 </style>
 </head>
@@ -130,6 +136,7 @@ footer { padding-block: 52px 0; font-size: .86rem; color: var(--muted); display:
       <div class="cta">
         <a class="btn primary" href="https://t.me/shiwans_munshi_bot">Try it on Telegram</a>
         <a class="btn" href="https://github.com/Shiwans/Munshi">Source code (MIT)</a>
+        <a class="btn" href="#why">Why not the khata apps?</a>
         <a class="btn" href="#open-source">What's inside</a>
       </div>
     </div>
@@ -161,7 +168,7 @@ haan likhu?</div>
     <div class="two">
       <div style="display:grid;gap:14px">
         <h2>The khata is still a paper diary and a chat with yourself</h2>
-        <p>In Dadar's wholesale market, a tomato trader sells to dozens of hotels and vendors a day, mostly on udhaar. Every sale goes into a red diary in their own shorthand, payments go in a side column, and the real balance lives in their head. Bookkeeping apps exist, but they want forms, English and a separate screen. Nobody fills forms at 6 am with crates moving.</p>
+        <p>In Dadar's wholesale market, a tomato trader sells to dozens of hotels and vendors a day, mostly on udhaar. Every sale goes into a red diary in their own shorthand, payments go in a side column, and the real balance lives in their head. Khata apps exist, but they ask the trader to stop and type into a screen. Nobody fills forms at 6 am with crates moving, so the diary wins.</p>
       </div>
       <div style="display:grid;gap:14px;align-content:start">
         <p class="quote">"Diary mein likh deta hoon, baad mein hisaab karta hoon. Kabhi kabhi baad aata hi nahi."</p>
@@ -172,6 +179,36 @@ haan likhu?</div>
           <li>Apps that ask for typing in forms get abandoned in a week</li>
         </ul>
       </div>
+    </div>
+  </section>
+
+  <section id="why">
+    <span class="eyebrow">There are already khata apps. Why Munshi?</span>
+    <h2>The apps digitised the ledger. Munshi digitises the munshi.</h2>
+    <p>Apps like Khatabook, OkCredit and Vyapar did the hard work of getting udhaar onto phones, and many shops use them. They are built around one habit: open the app, pick the customer, type each amount into a screen. A busy wholesale trader already has a habit, and it is the diary. Munshi does not ask them to change it. It is the clerk who reads what they wrote, does the sums and asks before writing anything down.</p>
+    <div class="scroll">
+      <table class="vs">
+        <thead><tr><th></th><th>Paper diary</th><th>Khata apps</th><th>Munshi</th></tr></thead>
+        <tbody>
+          <tr><td>Getting an entry in</td><td>Pen, already a habit</td><td>Open the app, find the customer, fill the screen, one entry at a time</td><td>One line, a voice note, or a photo of the page already written</td></tr>
+          <tr><td>Pages already written</td><td>Stay on paper</td><td>Retyped row by row, or left behind</td><td>One photo: every row read, numbered and checked</td></tr>
+          <tr><td>Trader's shorthand</td><td>Their own notation</td><td>Fixed fields</td><td>Reads <code>80⟩45 = 3600</code>, jalli, Hinglish, Devanagari names</td></tr>
+          <tr><td>qty × rate</td><td>Calculator, by hand</td><td>Worked out by the trader, then typed</td><td>Computed by code and shown: 72 kg × ₹28 = ₹2,016</td></tr>
+          <tr><td>Wrong sums on the page</td><td>Found late, if ever</td><td>Whatever is typed is saved</td><td>Flagged ⚠️ before saving: "page says 3,555, rows add to 3,195"</td></tr>
+          <tr><td>Where it lives</td><td>The diary</td><td>One more app to install and learn</td><td>The chat already on the phone (Telegram today, WhatsApp next)</td></tr>
+          <tr><td>Mistakes</td><td>Crossed out, still visible</td><td>Edited or deleted</td><td>Cancelled with a reversing entry; history stays honest</td></tr>
+          <tr><td>Asking a question</td><td>Flip pages</td><td>Tap through menus and reports</td><td>"Sagar ka baaki?" · "aaj ka hisaab"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="two">
+      <p class="shift">The trader keeps their habit. Munshi absorbs the work. That is why it can reach the shops that tried an app and went back to the diary.</p>
+      <ul class="plain muted">
+        <li><b>Zero switching cost:</b> no new app, no training, no change to how the day runs.</li>
+        <li><b>Day one is useful:</b> photograph last week's pages and the khata already has history.</li>
+        <li><b>Trust is built in:</b> AI only reads, code counts, the trader confirms every line.</li>
+        <li><b>Works with them, not against them:</b> export to Excel any time; nothing is locked in.</li>
+      </ul>
     </div>
   </section>
 
