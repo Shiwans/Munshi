@@ -1,26 +1,145 @@
-# Munshi
+# Munshi · मुंशी
 
-A bookkeeper in your chat. Small Indian traders already note the day's business as messages to themselves and in a
-paper diary. Munshi lives in that chat: a Hinglish line, a voice note, or a photo of the diary page becomes a khata
-(customers, udhaar, payments, daily hisaab), verified by you before anything is written.
+**A bookkeeper in your chat.** Small Indian traders already write the day's business by hand in a diary or as
+messages to themselves. Munshi lives in that chat: a Hinglish line, a voice note, or a photo of the diary page becomes a
+proper khata (customers, udhaar, payments, daily hisaab). The trader checks every entry before anything is saved.
 
-**Status: under construction (Hack Day, 11 Oct 2026).** See `docs/BUILD-PLAN.md` for the build order and
-`docs/SPEC.md` for the full design.
+> **Gemma reads. Code counts. The trader confirms.**
 
-## Models (all open-weight)
-- **gemma-4-26b-a4b-it via the Gemini API** — reads text and diary photos, extracts entries (function calling).
-- **Whisper large-v3-turbo** (mlx-whisper, local) — voice notes.
-- **nomic-embed-text-v1.5** (LM Studio, local) — customer-name matching.
-- **Qwen3.6-35B-A3B** (LM Studio, local) — fallback provider; the same bot runs fully on the laptop.
+Built at Hacktoberfest Hack Day Mumbai, 11 Oct 2026. MIT licensed.
 
-The model only extracts. All money math is plain code in `src/core/ledger.js`, in integer paise, unit-tested.
+## Models (all open weights)
 
-## Run
-```bash
-cp .env.example .env   # add GEMINI_API_KEY and TELEGRAM_BOT_TOKEN
-npm install
-npm test
-npm run dev
+| Model | Where it runs | Job |
+|---|---|---|
+| **gemma-4-26b-a4b-it via the Gemini API** | Google, through `@google/genai` | Reads Hinglish text and handwritten diary photos; function calling |
+| **Qwen3.6-35B-A3B (local, LM Studio)** | the laptop | Same job, fully offline; automatic fallback when the cloud call fails |
+| **Whisper large-v3-turbo (mlx-whisper)** | the laptop | Voice notes → text |
+| **nomic-embed-text-v1.5** | the laptop, LM Studio | Last step of customer-name matching |
+
+The Gemma call is in [`src/ai/gemma.js`](src/ai/gemma.js):
+
+```js
+const res = await client().models.generateContent({
+  model: 'gemma-4-26b-a4b-it',                 // Gemma 4 via the Gemini API
+  contents,                                    // text + inlineData diary photo
+  config: { systemInstruction: system, tools: [{ functionDeclarations: tools }],
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL }, temperature: 0.1 },
+});
 ```
 
-License: MIT.
+## What it does
+
+```
+You:    Sagar hotel 3 jalli 72kg 28 rate udhaar
+Munshi: 1. Sagar hotel (naya customer) · 3 jalli · 72 kg × ₹28 = ₹2,016 · udhaar
+        haan likhu?                                  [✅ Haan, likho] [❌ Nahi]
+You:    ✅
+Munshi: ✅ Likh diya. Sagar hotel ka baaki ab ₹2,016.
+You:    🎤 "usne pandrah sau diye"
+Munshi: Suna: "usne 1500 diye"
+        1. Sagar hotel · payment mila · ₹1,500        [✅ Haan, likho] [❌ Nahi]
+You:    Sagar ka baaki?          →  Sagar hotel ka baaki: ₹516
+You:    aaj ka hisaab            →  bikri, nagad vs udhaar, payments, cash in hand, top dues
+You:    📷 diary page            →  numbered card, one row per line, the diary's own sums re-checked
+```
+
+- **Text, voice note, or a photo / scanner PDF** of the diary page.
+- **Confirm or correct**: tap ✅, or fix by row number: `4 3555`, `2 rate 30`, `13 hatao`, `1 Gupta Dairy`, `18 kharcha`, `sab udhaar`.
+- **Ask**: `Sagar ka baaki`, `Sagar ka statement` (copy-ready for the customer), `aaj ka hisaab`, `kal`, `is hafte`, `customers`.
+- **Mistakes**: `galti` → a reversing entry. Nothing is ever edited or deleted.
+- **Languages**: Hinglish (default), Hindi, Marathi, Gujarati, English. `/bhasha`, `/help`, `/export` (CSV), `/delete`.
+
+### Tested on a real diary
+Three scanned pages from a Dadar tomato trader (Devanagari names, rows written `qty⟩rate = total`, payments in a middle
+column, supplier purchases on the right). Gemma reads each row; `ledger.js` recomputes it:
+
+| Diary says | Code computes | Card |
+|---|---|---|
+| `80⟩45 = 3600` | 80 × ₹45 = ₹3,600 | ✓, existing customer matched |
+| `95⟩50 + 5⟩30 = 4900` | ₹4,750 + ₹150 = ₹4,900 | ✓ multi-part row |
+| `59⟩45 + 30⟩30 = 3555` (read as 51) | ₹3,195 | ⚠️ asks which is right: misread caught |
+| `30½⟩55 = 1678` | ₹1,677.50 | ✓ rupee rounding accepted |
+| `102⟩` | qty only | ⚠️ amount? (never guessed) |
+
+On the second page every returning customer matched the first page's khata; suppliers taught once (`18 kharcha`) are
+remembered.
+
+## Why it is more than a model wrapper
+1. **The model never computes money.** Amounts are integer paise. [`src/core/ledger.js`](src/core/ledger.js) is the only
+   source of totals, balances and hisaab: pure functions, unit-tested. A free-text model answer containing digits is discarded.
+2. **No write without "haan".** Model output becomes a `pending` card; customers are created only on confirm and new
+   names are tagged `(naya customer)`.
+3. **Immutable entries.** Corrections are reversing entries (`reverses: <id>`); both stay visible.
+4. **Learns each trader.** Aliases from corrections, a supplier list, the diary layout, and the last confirmed page as a
+   worked example for the next photo.
+5. **Common questions skip the model.** `haan`, row fixes, baaki, hisaab, statement are answered by code in under a second.
+6. **Swappable reader.** `provider.js` exposes one `chat()`; Gemma and Qwen implement it. If Gemma fails, Qwen answers and
+   the reply says `(offline munshi)`.
+
+## Architecture
+
+```
+ phone (Telegram) ─► telegram.js ─► handler.js ──► provider.js ─► gemma.js ─► Gemini API (gemma-4-26b-a4b-it)
+                        │              │  │                    └► local.js ─► LM Studio (Qwen3.6-35B-A3B)
+              voice ─► whisper.js      │  └─► ledger.js (paise math) · match.js (alias → fuzzy → nomic embeddings)
+                     (Whisper, local)  └─► store.js ─► data/<traderId>.json  (atomic write, gitignored)
+```
+
+```
+src/core   ledger.js · money.js · store.js · match.js · prompts.js
+src/ai     provider.js · gemma.js · local.js · whisper.js · image.js
+src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
+src/cli.js            same handler from the terminal
+skills/munshi-ledger  Agent Skill (agentskills.io spec)
+test/                 node:test — 26 tests
+```
+
+**Storage**: one JSON file per trader, `data/<telegram-user-id>.json`, with `profile`, `customers`, `entries`,
+`pending`, `history`. Balances are never stored; they are summed from the entries on every question.
+Voice audio and the khata never leave the laptop; with `MUNSHI_PROVIDER=local`, message text and photos don't either.
+
+## Run
+
+```bash
+npm install
+cp .env.example .env        # GEMINI_API_KEY (aistudio.google.com/apikey), TELEGRAM_BOT_TOKEN (@BotFather)
+npm test
+npm run dev                 # Telegram bot, long polling: no webhook, no tunnel
+```
+
+Fully local: start LM Studio with `qwen/qwen3.6-35b-a3b` and `text-embedding-nomic-embed-text-v1.5`, then
+
+```bash
+MUNSHI_PROVIDER=local npm run dev
+```
+
+Voice needs `ffmpeg` and `uv` (Whisper runs via `uvx --python 3.12 --from mlx-whisper mlx_whisper`, Apple Silicon).
+
+CLI, same brain:
+
+```bash
+node src/cli.js record "Sagar hotel 3 jalli 72kg 28 rate udhaar"
+node src/cli.js confirm
+node src/cli.js photo diary-page.pdf
+node src/cli.js hisaab today
+```
+
+## Agent skill
+[`skills/munshi-ledger/SKILL.md`](skills/munshi-ledger/SKILL.md) lets any skills-compatible agent keep a khata through
+`scripts/munshi.sh` with the same confirm-first rules. Validated with `skills-ref validate`.
+
+## 2-minute demo
+1. Phone: `Sagar hotel 3 jalli 72kg 28 rate udhaar` → card with the working → tap ✅.
+2. Send the diary page → numbered rows → `4 3555` fixes the misread row → ✅ → "yaad rakh liya".
+3. Voice note "Sagar ne pandrah sau diye" → `Suna: …` → payment card → ✅.
+4. `Sagar ka baaki?` and `aaj ka hisaab`.
+5. Laptop: `MUNSHI_PROVIDER=local npm run dev`, repeat step 1 → same Munshi, nothing leaves the machine.
+6. This README and `skills/munshi-ledger/SKILL.md`.
+
+## Roadmap
+- **WhatsApp adapter** next: the handler is channel-agnostic, so it is one more file beside `telegram.js`.
+- Reminders for old udhaar, PDF statement to forward, several users per shop, item-wise rate history, backups.
+
+## License
+MIT — see [LICENSE](LICENSE).
