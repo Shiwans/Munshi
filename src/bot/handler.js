@@ -106,8 +106,9 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
 
   // --- model -----------------------------------------------------------------
   async function modelTurn({ data, input, image = null, L, correcting = false }) {
-    const sys = systemPrompt(data, { today: today(), photo: !!image });
-    const messages = [];
+    const sys = systemPrompt(data, { today: today(), photo: !!image, lastCustomer: lastCustomerName(data) });
+    // short memory so "usne 500 diye" knows who "usne" is; only plain text turns, never cards with numbers to copy
+    const messages = (data.history || []).slice(-6).map((h) => ({ role: h.role, text: h.text }));
     if (correcting) messages.push({ role: 'user', text: correctionPrompt(cardText(data, L)) });
     messages.push({ role: 'user', text: input || (image ? 'Is diary page ki saari entries padho.' : '') });
 
@@ -126,17 +127,20 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const a = call.args || {};
       if (call.name === 'record_entries') recorded = (recorded || []).concat(a.entries || []);
       else if (call.name === 'update_profile') {
-        if (a.diaryProfile) {
-          if (image) data.pendingProfile = a.diaryProfile; // saved on confirm
-          else data.profile.diaryProfile = a.diaryProfile;
+        // settings change only when the trader clearly asked; the model never flips them on its own
+        let changed = false;
+        if (a.diaryProfile && image) data.pendingProfile = a.diaryProfile; // saved on confirm
+        if (a.shopName && /dukaan|dukan|shop|naam|name|दुकान|नाव|દુકાન/i.test(input)) (data.profile.shopName = a.shopName), (changed = true);
+        if (a.language && parseLang(a.language) && /bhasha|language|hindi|marathi|gujarati|english|hinglish|भाषा|ભાષા/i.test(input)) {
+          data.profile.language = parseLang(a.language);
+          changed = true;
         }
-        if (a.shopName) data.profile.shopName = a.shopName;
-        if (a.language && parseLang(a.language)) data.profile.language = parseLang(a.language);
-        if (!image && (a.shopName || a.language || a.diaryProfile)) replies.push(t(data.profile.language).profileSaved);
+        if (changed) replies.push(t(data.profile.language).profileSaved);
       } else if (call.name === 'get_khata') replies.push(...(await khataReply(data, a.customer, L)));
       else if (call.name === 'statement') replies.push(...(await statementReply(data, a, L)));
       else if (call.name === 'get_hisaab') replies.push(hisaabReply(data, a, L));
       else if (call.name === 'list_customers') replies.push(customersReply(data, L));
+      else if (call.name === 'reply') replies.push(/\d/.test(a.text || '') || !a.text ? L.help : a.text); // numbers only ever come from code
     }
 
     if (recorded) {
@@ -155,6 +159,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
 
     if (!replies.length) replies.push(res.text || (image ? L.unreadable : L.notUnderstood));
     replies[0] = prefix + replies[0];
+    if (!image && !correcting && input) remember(data, input, recorded ? '(card shown to trader)' : '(answered from the khata)');
     return { replies };
   }
 
@@ -185,6 +190,11 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       .filter((x) => x.qty !== null && x.ratePaise !== null);
     if (parts.length > 1) row.parts = parts;
     else if (parts.length === 1 && row.qty === null) Object.assign(row, { qty: parts[0].qty, ratePaise: parts[0].ratePaise });
+    if (row.statedPaise === 0) row.statedPaise = null; // models send 0 for "not written"
+    // "10 kg at 40": the rate echoed back as the total is not a written total
+    if (row.qty !== null && row.qty !== 1 && row.ratePaise !== null && row.statedPaise === row.ratePaise) row.statedPaise = null;
+    // the trader's own shop is never a customer ("Shiwans Trader ne 500 diye" → who?)
+    if (row.customerText && data.profile.shopName && store.normaliseName(row.customerText) === store.normaliseName(data.profile.shopName)) row.customerText = null;
     // learnt suppliers: their rows are the trader's own purchases/payments, never customer udhaar
     const sup = row.customerText && supplierOf(data, row.customerText);
     if (sup) Object.assign(row, { type: 'expense', supplier: sup, customerText: null, paid: null, note: row.note || (e.type === 'payment' ? 'jama' : null) });
@@ -558,6 +568,18 @@ function exportCsv(data, L) {
     );
   }
   return { document: { filename: `munshi-khata-${store.nowIST().date}.csv`, data: Buffer.from(lines.join('\n'), 'utf8') }, caption: L.exportCaption };
+}
+
+function remember(data, userText, botText) {
+  data.history = [...(data.history || []), { role: 'user', text: userText.slice(0, 300) }, { role: 'assistant', text: botText.slice(0, 300) }].slice(-6);
+}
+
+// the customer the trader most likely means by "usne / uska / he"
+function lastCustomerName(data) {
+  const fromPending = data.pending?.rows?.findLast?.((r) => r.customerText)?.customerText;
+  if (fromPending) return fromPending;
+  const e = data.entries.findLast((x) => x.customerId && !x.reverses);
+  return e ? store.getCustomer(data, e.customerId)?.name : null;
 }
 
 function supplierOf(data, name) {

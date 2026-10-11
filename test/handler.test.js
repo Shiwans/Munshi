@@ -132,3 +132,20 @@ test('voice: transcript is shown, then the same text path builds the card', asyn
   assert.match(r[1], /payment mila · ₹1,500/);
   await h.handleMessage({ traderId: 'a', text: 'nahi' });
 });
+
+test('"usne" uses the last customer; the shop name is never a customer; model cannot flip language', async () => {
+  const d = store.load('u'); d.profile.shopName = 'Shiwans Trader'; store.save('u', d);
+  queue.push(rec({ type: 'sale', customer: 'Sagar hotel', qty: 72, rate: 28, paid: false }));
+  await say('u', 'Sagar hotel 72kg 28 udhaar'); await say('u', 'haan');
+  queue.push({ text: '', toolCalls: [
+    { name: 'record_entries', args: { entries: [{ type: 'payment', customer: 'Shiwans Trader', amount: 500 }] } },
+    { name: 'update_profile', args: { language: 'en', diaryProfile: 'The trader is Shiwans' } },
+  ] });
+  const [card] = await say('u', 'usne 500 diye');
+  assert.match(calls.at(-1).system, /just discussed: "Sagar hotel"/);
+  assert.match(card, /⚠️ kiska\?/);
+  const after = store.load('u');
+  assert.equal(after.profile.language, 'hinglish');
+  assert.equal(after.profile.diaryProfile, '');
+  assert.ok(calls.at(-1).messages.length > 1, 'history sent');
+});

@@ -73,6 +73,11 @@ export const TOOLS = [
       },
     },
   },
+  {
+    name: 'reply',
+    description: 'Short reply for greetings, small talk, or when you need to ask the trader something. Never put numbers or amounts in it.',
+    parameters: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  },
   { name: 'list_customers', description: 'List all customers with their balance.', parameters: { type: 'object', properties: {} } },
   {
     name: 'update_profile',
@@ -88,7 +93,7 @@ export const TOOLS = [
   },
 ];
 
-export function systemPrompt(data, { today, photo = false } = {}) {
+export function systemPrompt(data, { today, photo = false, lastCustomer = null } = {}) {
   const p = data.profile;
   const customers = data.customers.length
     ? data.customers.map((c) => (c.aliases.length ? `${c.name} (also: ${c.aliases.join(', ')})` : c.name)).join('; ')
@@ -100,6 +105,8 @@ export function systemPrompt(data, { today, photo = false } = {}) {
     'Entry types: sale (goods to a customer; paid=false when udhaar/baaki/credit, true when cash/nagad/paid/UPI; if unclear for a named customer use false), payment (money received from a customer, e.g. "Sagar ne 1500 diye"), expense (trader\'s own cost: bhada, labour, purchase).',
     'NEVER compute totals or multiply. Extract only what is written: qty, unit, rate, and amount only if a total is explicitly written. Leave unknown numbers out.',
     'Example: "Sagar hotel 3 jalli 72kg 28 rate udhaar" → record_entries {type:sale, customer:"Sagar hotel", qtyLabel:"3 jalli", qty:72, unit:"kg", rate:28, paid:false}.',
+    `The shop itself (${p.shopName || 'the trader'}) is never a customer. If the trader says usne/uska/unhone/he/she without a name, the customer is the one just discussed${lastCustomer ? `: "${lastCustomer}"` : ''}. If you cannot tell who, leave customer empty.`,
+    'Do not call update_profile unless the trader explicitly asks to change shop name or language.',
     'Questions about balances, totals or customers → call the matching query tool. Do not answer numbers yourself.',
   ];
   if (p.suppliers?.length) lines.push(`Trader's suppliers (rows with these names are ALWAYS type expense with supplier set, never customers): ${p.suppliers.join(', ')}.`);

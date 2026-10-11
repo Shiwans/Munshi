@@ -1,6 +1,6 @@
 // Gemma 4 through the Gemini API (@google/genai). Reads text and diary photos; function calling.
 
-import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI, ThinkingLevel, FunctionCallingConfigMode } from '@google/genai';
 
 let ai = null;
 const client = () => {
@@ -26,7 +26,8 @@ export async function chat({ system, messages, tools = [], images = [] }) {
     contents,
     config: {
       systemInstruction: system,
-      ...(tools.length ? { tools: [{ functionDeclarations: tools }] } : {}),
+      // tools are mandatory: the model may only answer through a tool, never with free-text numbers
+      ...(tools.length ? { tools: [{ functionDeclarations: tools }], toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } } } : {}),
       thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       temperature: 0.1,
     },
