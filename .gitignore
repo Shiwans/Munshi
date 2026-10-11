@@ -7,3 +7,6 @@ tmp/
 auth_info_baileys/
 backups/
 trash/
+video/*.aiff
+video/*.wav
+video/*.jpg

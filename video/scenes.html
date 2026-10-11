@@ -1,0 +1,119 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--paper:#fbfcfe;--ink:#1d2433;--muted:#5d6779;--rule:#d7e2f3;--margin:#e0566a;--bahi:#a4232f;--ok:#1f7a4d;--warn:#b76a00;--chip:#eef3fb;--card:#fff;--blue:#2f6fde;
+--display:"Tiro Devanagari Hindi",Georgia,serif;--body:"IBM Plex Sans",system-ui,sans-serif;--mono:"IBM Plex Mono",Menlo,monospace}
+*{box-sizing:border-box}html,body{margin:0;width:1280px;height:720px;overflow:hidden}
+body{background:var(--paper) repeating-linear-gradient(to bottom,transparent 0 39px,var(--rule) 39px 40px);color:var(--ink);font:24px/1.45 var(--body);position:relative}
+body::before{content:"";position:absolute;top:0;bottom:0;left:90px;width:3px;background:var(--margin);opacity:.6}
+.s{display:grid;position:absolute;inset:0;padding:70px 90px 60px 140px;opacity:0;animation:scene 5s linear both}
+.s.last{animation-name:sceneLast}
+@keyframes scene{0%{opacity:0;transform:translateY(24px)}8%{opacity:1;transform:none}92%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-16px)}}
+@keyframes sceneLast{0%{opacity:0;transform:translateY(24px)}8%{opacity:1;transform:none}100%{opacity:1}}
+.p{animation:pop .55s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes pop{from{opacity:0;transform:translateY(18px) scale(.96)}to{opacity:1;transform:none}}
+.brand{position:absolute;left:140px;bottom:22px;font:600 18px/1 var(--body);color:var(--muted);letter-spacing:.06em}
+.bar{position:absolute;left:0;bottom:0;height:6px;background:var(--bahi);animation:grow 30s linear both}
+@keyframes grow{from{width:0}to{width:100%}}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;line-height:1.1}
+h1{font-size:96px}h1 em{font-style:normal;color:var(--bahi)}h2{font-size:58px}
+.eb{font:600 18px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--bahi)}
+.muted{color:var(--muted)}
+.pill{display:inline-block;background:var(--chip);border-radius:999px;padding:10px 22px;font-weight:600;font-size:24px}
+.row{display:flex;gap:28px;align-items:center}
+.box{background:var(--card);border:2px solid var(--rule);border-radius:22px;padding:26px 30px}
+.msg{padding:14px 20px;border-radius:20px;font-size:24px;max-width:560px;white-space:pre-wrap}
+.me{background:var(--blue);color:#fff;justify-self:end;border-bottom-right-radius:6px}
+.bot{background:var(--chip);border-bottom-left-radius:6px}
+.key{display:inline-block;border:2px solid var(--rule);border-radius:12px;padding:8px 16px;font-size:20px;background:#fff;margin-right:8px}
+.diary{background:#fffdf3;border:2px solid #e8e0c4;border-left:6px solid #d24a4a;border-radius:14px;padding:22px 28px;font:34px/2 var(--display);background-image:repeating-linear-gradient(to bottom,transparent 0 67px,#e6e1cc 67px 68px)}
+.ok{color:var(--ok);font-weight:600}.w{color:var(--warn);font-weight:600}
+.big{font:600 84px/1 var(--body)}
+.chip{display:inline-block;background:#fff;border:2px solid var(--rule);border-radius:999px;padding:8px 18px;font-size:21px;margin:0 8px 10px 0}
+</style></head><body>
+
+<!-- 1 hook -->
+<div class="s" id="s1" style="align-content:center;gap:30px">
+  <span class="pill" data-o="0.3">📱 For traders whose only app is WhatsApp</span>
+  <h1 data-o="0.8">Your diary.<br><em>Now a khata.</em></h1>
+  <p data-o="1.6" class="muted" style="font-size:32px;margin:0">Munshi · मुंशी — a bookkeeper in your chat</p>
+</div>
+
+<!-- 2 problem -->
+<div class="s" id="s2" style="align-content:center;gap:34px">
+  <span class="eb">The problem</span>
+  <h2 data-o="0.3">Lakhs of traders still run on a paper diary.</h2>
+  <div class="row" style="gap:22px">
+    <div data-o="1.0" class="box" style="flex:1"><b style="font-size:28px">📒 Diary</b><p class="muted" style="margin:10px 0 0">Udhaar forgotten. Totals by calculator.</p></div>
+    <div data-o="1.7" class="box" style="flex:1"><b style="font-size:28px">📱 Khata apps</b><p class="muted" style="margin:10px 0 0">Install, sign up, menus, forms. Given up in a week.</p></div>
+    <div data-o="2.6" class="box" style="flex:1;border-color:var(--ok)"><b style="font-size:28px;color:var(--ok)">💬 Munshi</b><p style="margin:10px 0 0">Just chat. Nothing to learn.</p></div>
+  </div>
+</div>
+
+<!-- 3 write / say -->
+<div class="s" id="s3" style="grid-template-columns:1fr 1fr;gap:50px;align-items:center">
+  <div style="display:grid;gap:22px">
+    <span class="eb">Write it · Say it</span>
+    <h2>Chat like you chat on WhatsApp.</h2>
+    <p class="muted" style="margin:0">Munshi does the maths and asks before saving.</p>
+  </div>
+  <div class="box" style="display:grid;gap:14px;border-radius:30px">
+    <div data-o="0.6" class="msg me">Sagar hotel 72kg 28 rate udhaar</div>
+    <div data-o="1.4" class="msg bot"><b>Sagar hotel</b>
+72 kg × ₹28 = <b>₹2,016</b> · udhaar
+haan likhu?</div>
+    <div data-o="2.0"><span class="key">✅ Haan</span><span class="key">❌ Nahi</span></div>
+    <div data-o="2.8" class="msg me">🎤 "Sagar ne pandrah sau diye"</div>
+    <div data-o="3.5" class="msg bot">✅ ₹1,500 mila · baaki <b>₹516</b></div>
+  </div>
+</div>
+
+<!-- 4 snap -->
+<div class="s" id="s4" style="align-content:center;gap:28px">
+  <span class="eb">Snap it</span>
+  <h2>One photo of the diary. Every row checked.</h2>
+  <div class="row">
+    <div data-o="0.5" class="diary" style="flex:1">विरेन्द्र 80⟩45 = 3600<br>अंकुश 95⟩50 + 5⟩30 = 4900<br>प्रकाश 59⟩45 + 30⟩30 = 3555</div>
+    <div data-o="1.2" style="font-size:54px" class="muted">→</div>
+    <div class="box" style="flex:1;display:grid;gap:12px">
+      <div data-o="1.6" style="display:flex;justify-content:space-between"><span>1. Virendra</span><span class="ok">₹3,600 ✓</span></div>
+      <div data-o="2.0" style="display:flex;justify-content:space-between"><span>2. Ankush</span><span class="ok">₹4,900 ✓</span></div>
+      <div data-o="2.4" style="display:flex;justify-content:space-between"><span>3. Prakash</span><span class="w">⚠️ 3,555 or 3,195?</span></div>
+    </div>
+  </div>
+  <p data-o="3.1" style="margin:0"><b class="ok">96%</b> of rows read exactly from a real handwritten diary · <b>0</b> wrong rows saved without a ⚠️</p>
+</div>
+
+<!-- 5 trust + open -->
+<div class="s" id="s5" style="align-content:center;gap:30px">
+  <span class="eb">Built to be trusted</span>
+  <h2 data-o="0.3">Gemma reads. Code counts.<br><em style="font-style:normal;color:var(--bahi)">The trader confirms.</em></h2>
+  <div data-o="1.4" class="row" style="gap:40px;font-size:26px">
+    <span>🧮 AI never does maths</span><span>✅ Nothing saved without haan</span><span>🗣️ 5 languages</span>
+  </div>
+  <div>
+    <span data-o="2.2" class="chip"><b>Gemma 4</b> via the Gemini API</span><span data-o="2.4" class="chip"><b>Qwen3.6</b> offline</span><span data-o="2.6" class="chip"><b>Whisper</b> voice</span><span data-o="2.8" class="chip"><b>nomic-embed</b></span><span data-o="3.0" class="chip"><b>Laya</b></span><span data-o="3.2" class="chip"><b>MIT</b> open source</span>
+  </div>
+</div>
+
+<!-- 6 cta -->
+<div class="s" id="s6" style="align-content:center;gap:28px">
+  <h1 data-o="0.3" style="font-size:78px">If you can send a message,<br><em>you can keep a khata.</em></h1>
+  <div style="display:grid;gap:12px;font-size:30px">
+    <span data-o="1.4">🌐 <b>shiwans.github.io/Munshi</b></span>
+    <span data-o="2.0">💬 Telegram demo: <b>@shiwans_munshi_bot</b> · WhatsApp next</span>
+  </div>
+</div>
+
+<div class="brand">MUNSHI · मुंशी</div><div class="bar"></div>
+<script>
+// every scene is 5 s; children marked .p pop in at data-o seconds into their scene
+document.querySelectorAll('.s').forEach((sc,i)=>{
+  const st=i*5; sc.style.animationDelay=st+'s';
+  if(i===5) sc.classList.add('last');
+  sc.querySelectorAll('[data-o]').forEach(el=>{el.classList.add('p');el.style.animationDelay=(st+parseFloat(el.dataset.o))+'s'});
+});
+window.seek=t=>{document.getAnimations().forEach(a=>{a.pause();a.currentTime=t*1000})};
+</script>
+</body></html>
