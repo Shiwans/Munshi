@@ -3,316 +3,230 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Munshi · मुंशी — a bookkeeper in your chat</title>
-<meta name="description" content="Munshi turns a trader's Hinglish message, voice note or diary photo into a checked khata. Nothing is saved until the trader says haan.">
+<title>Munshi · मुंशी</title>
+<meta name="description" content="For traders whose only app is WhatsApp. Type, speak or photograph the diary; Munshi keeps the khata. Nothing is saved until you say haan.">
 <meta property="og:title" content="Munshi · मुंशी">
-<meta property="og:description" content="A bookkeeper in your chat for small Indian traders. 96% of rows read exactly from a real handwritten diary. Built on open models.">
+<meta property="og:description" content="Your diary, now a khata. For traders whose only app is WhatsApp. 96% of rows read exactly from a real handwritten diary.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a ruled diary page with a red margin rule; product story first, the open-source stack as a closing ledger. */
 :root {
   --paper: #fbfcfe; --ink: #1d2433; --muted: #5d6779; --rule: #d7e2f3; --margin: #e0566a;
-  --bahi: #a4232f; --ok: #1f7a4d; --warn: #b76a00; --chip: #eef3fb; --card: #ffffff; --blue: #2f6fde; --violet: #7a4bd1;
+  --bahi: #a4232f; --ok: #1f7a4d; --warn: #b76a00; --chip: #eef3fb; --card: #ffffff; --blue: #2f6fde;
   --display: "Tiro Devanagari Hindi", Georgia, "Times New Roman", serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
-    --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; --violet: #b693ff; color-scheme: dark; }
+    --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; color-scheme: dark; }
 }
 :root[data-theme="dark"] { --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
-  --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; --violet: #b693ff; color-scheme: dark; }
+  --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; color-scheme: dark; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; background-color: var(--paper); background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
-  color: var(--ink); font: 16px/1.6 var(--body); padding-block: 0 72px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.55 var(--body); padding-bottom: 64px; }
 a { color: inherit; }
-.page { max-width: 1060px; margin: 0 auto; padding-inline: 20px; position: relative; }
-.page::before { content: ""; position: absolute; top: 0; bottom: -72px; left: 6px; width: 2px; background: var(--margin); opacity: .55; }
-@media (min-width: 720px) { .page { padding-inline: 64px 32px; } .page::before { left: 40px; } }
-h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; line-height: 1.2; margin: 0; }
-h1 { font-size: clamp(2.6rem, 7vw, 4.4rem); color: var(--bahi); }
-h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); }
-h3 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; }
-p { margin: 0; max-width: 66ch; }
-code { font-family: var(--mono); font-size: .86em; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
-.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.page { max-width: 1040px; margin: 0 auto; padding-inline: 16px; }
+@media (min-width: 720px) { .page { padding-inline: 32px; } }
+h1, h2 { font-family: var(--display); font-weight: 400; line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.5rem, 7vw, 4.2rem); }
+h1 em { font-style: normal; color: var(--bahi); }
+h2 { font-size: clamp(1.6rem, 3.6vw, 2.2rem); }
+h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
 .muted { color: var(--muted); }
-section { padding-block: 52px 4px; display: grid; gap: 20px; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--bahi); }
+section { padding-block: 64px 0; display: grid; gap: 24px; }
+.center { text-align: center; justify-items: center; }
 
 /* hero */
-.hero { padding-block: 56px 8px; display: grid; gap: 22px; grid-template-columns: 1fr; align-items: center; }
-@media (min-width: 900px) { .hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 380px); gap: 40px; } }
-.hero .lede { font-size: 1.18rem; }
-.motto { font-family: var(--display); font-size: clamp(1.3rem, 3vw, 1.75rem); }
-.motto b { color: var(--bahi); font-weight: 400; }
+.hero { padding-top: 48px; display: grid; gap: 32px; align-items: center; }
+@media (min-width: 880px) { .hero { grid-template-columns: 1fr 360px; gap: 48px; } }
+.hero .lede { font-size: 1.2rem; color: var(--muted); max-width: 30ch; }
+.who { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; font-size: .9rem; background: var(--chip); border-radius: 999px; padding: 6px 14px; width: fit-content; }
 .cta { display: flex; flex-wrap: wrap; gap: 10px; }
-.btn { font: 600 .92rem/1 var(--body); text-decoration: none; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--rule); background: var(--card); }
+.btn { font: 600 .95rem/1 var(--body); text-decoration: none; padding: 13px 18px; border-radius: 10px; border: 1px solid var(--rule); background: var(--card); }
 .btn.primary { background: var(--bahi); color: var(--paper); border-color: var(--bahi); }
 .btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* phone */
-.phone { background: var(--card); border: 1px solid var(--rule); border-radius: 24px; padding: 14px; display: grid; gap: 9px; box-shadow: 0 14px 40px rgb(0 0 0 / .08); }
-.phone .bar { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); padding: 2px 6px 8px; border-bottom: 1px solid var(--rule); }
-.msg { max-width: 92%; padding: 9px 12px; border-radius: 14px; font-size: .86rem; line-height: 1.45; white-space: pre-wrap; }
+.phone { background: var(--card); border: 1px solid var(--rule); border-radius: 26px; padding: 14px; display: grid; gap: 9px; box-shadow: 0 16px 44px rgb(0 0 0 / .09); }
+.phone .bar { font-size: .8rem; color: var(--muted); padding: 2px 6px 8px; border-bottom: 1px solid var(--rule); }
+.msg { max-width: 90%; padding: 9px 12px; border-radius: 14px; font-size: .88rem; line-height: 1.45; white-space: pre-wrap; }
 .me { justify-self: end; background: var(--blue); color: var(--paper); border-bottom-right-radius: 4px; }
-.bot { justify-self: start; background: var(--chip); border-bottom-left-radius: 4px; font-family: var(--mono); font-size: .76rem; }
-.bot b { font-family: var(--body); }
+.bot { justify-self: start; background: var(--chip); border-bottom-left-radius: 4px; }
 .keys { display: flex; gap: 6px; }
-.key { font: 500 .76rem/1 var(--body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); }
-.ok { color: var(--ok); } .w { color: var(--warn); }
+.key { font: 500 .78rem/1 var(--body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); }
 
-/* proof strip */
-.proof { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
-.stat { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 16px; display: grid; gap: 4px; align-content: start; }
-.stat b { font: 600 1.9rem/1.1 var(--body); font-variant-numeric: tabular-nums; }
+/* steps */
+.steps { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); width: 100%; }
+.step { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 22px; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.step .big { font-size: 2.2rem; line-height: 1; }
+.step .n { font: 600 .72rem/1 var(--body); color: var(--muted); letter-spacing: .1em; }
+.step p { color: var(--muted); font-size: .92rem; }
+
+/* stats */
+.stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); width: 100%; }
+.stat { display: grid; gap: 2px; padding: 18px; border-radius: 16px; background: var(--card); border: 1px solid var(--rule); }
+.stat b { font: 600 2.2rem/1.1 var(--body); font-variant-numeric: tabular-nums; }
 .stat span { color: var(--muted); font-size: .88rem; }
-.stat.red b { color: var(--bahi); } .stat.green b { color: var(--ok); }
+.stat.g b { color: var(--ok); } .stat.r b { color: var(--bahi); }
 
-/* problem */
-.two { display: grid; gap: 22px; grid-template-columns: 1fr; }
-@media (min-width: 820px) { .two { grid-template-columns: 1fr 1fr; } }
-.quote { font-family: var(--display); font-size: 1.25rem; border-left: 3px solid var(--bahi); padding-left: 14px; }
-ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+/* before / after */
+.ba { display: grid; gap: 14px; align-items: center; width: 100%; }
+@media (min-width: 760px) { .ba { grid-template-columns: 1fr auto 1fr; } }
+.page-diary { background: #fffdf3; color: #2b2a26; border: 1px solid #e8e0c4; border-left: 4px solid #d24a4a; border-radius: 10px; padding: 18px; font: 1.25rem/2 var(--display);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 39px, #e6e1cc 39px 40px); }
+.arrow { font-size: 2rem; color: var(--muted); text-align: center; }
+@media (max-width: 759px) { .arrow { transform: rotate(90deg); } }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; font-size: .92rem; display: grid; gap: 6px; }
+.card .row { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed var(--rule); padding-bottom: 6px; }
+.card .row:last-of-type { border-bottom: 0; }
+.card .w { color: var(--warn); font-weight: 600; }
+.card .ok { color: var(--ok); font-weight: 600; }
+.mono { font-family: var(--mono); font-size: .85em; }
 
-/* features */
-.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-.box { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 7px; align-content: start; }
-.box p { font-size: .92rem; color: var(--muted); }
-.box .say { font-family: var(--mono); font-size: .8rem; color: var(--ink); background: var(--chip); border-radius: 6px; padding: 6px 8px; }
-.icon { font-size: 1.3rem; line-height: 1; }
+/* vs */
+.vs { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); width: 100%; text-align: left; }
+.col { border: 1px solid var(--rule); border-radius: 16px; padding: 20px; display: grid; gap: 10px; align-content: start; background: var(--card); }
+.col.win { border: 2px solid var(--ok); }
+.col h3 { font-size: 1.05rem; }
+.col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: .93rem; }
+.col li::before { content: "✕  "; color: var(--bahi); font-weight: 600; }
+.col.win li::before { content: "✓  "; color: var(--ok); }
 
 /* promises */
-.promises { display: grid; gap: 0; }
-.promise { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding-block: 14px; border-bottom: 1px solid var(--rule); }
-.promise .tick { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--ok); color: var(--ok); display: grid; place-items: center; font-size: .8rem; margin-top: 2px; }
-.promise p { color: var(--muted); font-size: .94rem; }
+.promises { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); width: 100%; }
+.pr { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 18px 12px; }
+.pr .big { font-size: 1.9rem; line-height: 1; }
+.pr p { color: var(--muted); font-size: .88rem; }
 
-/* diary table */
-.scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 6px 12px; }
-table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
-th { text-align: left; font: 600 .7rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 2px solid var(--rule); }
-td { padding: 9px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-td.mono { font-family: var(--mono); white-space: nowrap; font-size: .82rem; }
-.flag { color: var(--warn); font-weight: 600; } .pass { color: var(--ok); font-weight: 600; }
+/* open source */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip { background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 8px 14px; font-size: .9rem; }
+.chip small { color: var(--muted); }
+details { width: 100%; max-width: 760px; text-align: left; }
+summary { cursor: pointer; color: var(--muted); font-size: .9rem; text-align: center; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: 12px; }
+td { padding: 8px 6px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td:last-child { color: var(--muted); white-space: nowrap; text-align: right; }
 
-/* languages */
-.langs { display: flex; flex-wrap: wrap; gap: 8px; }
-.lang { background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 7px 13px; font-size: .92rem; }
-.lang .t { font-family: var(--display); font-size: 1.05rem; }
-
-/* open source ledger */
-.oss th:last-child, .oss td:last-child { text-align: right; }
-.lic.m { display: none; }
-@media (max-width: 600px) { .oss th:last-child, .oss td:last-child { display: none; } .lic.m { display: inline-block; margin-top: 4px; } }
-.lic { font: 600 .72rem/1.9 var(--body); letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: var(--chip); white-space: nowrap; }
-.where { font-size: .78rem; color: var(--muted); display: block; }
-.kind { font: 600 .66rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.road { display: grid; gap: 0; }
-.road .row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding-block: 10px; border-bottom: 1px solid var(--rule); }
-.state { font: 600 .7rem/1.9 var(--body); letter-spacing: .08em; text-transform: uppercase; }
-.state.now { color: var(--ok); } .state.next { color: var(--violet); } .state.later { color: var(--muted); }
-/* why not apps */
-.vs th:first-child { width: 22%; }
-.vs td:last-child { background: color-mix(in srgb, var(--ok) 8%, transparent); }
-.vs th:last-child { color: var(--ok); }
-.vs td:first-child { font-weight: 600; }
-.shift { font-family: var(--display); font-size: clamp(1.2rem, 2.6vw, 1.5rem); border-left: 3px solid var(--ok); padding-left: 14px; }
-footer { padding-block: 52px 0; font-size: .86rem; color: var(--muted); display: grid; gap: 6px; }
+footer { padding-top: 64px; text-align: center; font-size: .86rem; color: var(--muted); display: grid; gap: 6px; }
 </style>
 </head>
 <body>
 <div class="page">
 
   <header class="hero">
-    <div style="display:grid;gap:20px">
-      <span class="eyebrow">For traders whose only app is WhatsApp · Hacktoberfest Hack Day Mumbai 2026 · MIT</span>
-      <h1>Munshi <span class="muted" style="font-size:.5em">मुंशी</span></h1>
-      <p class="lede">Built for traders who have never used a business app, and whose only tech is chatting on WhatsApp. If you can send a message, you can use Munshi. A bookkeeper that lives in the chat. Type a line, send a voice note, or photograph the day's diary page. Munshi turns it into a proper khata: who bought what, who owes how much, and today's hisaab. Nothing is written until the trader says <b>haan</b>.</p>
-      <p class="motto"><b>Gemma reads.</b> Code counts. <b>The trader confirms.</b></p>
+    <div style="display:grid;gap:22px">
+      <span class="who">📱 For traders whose only app is WhatsApp</span>
+      <h1>Your diary.<br><em>Now a khata.</em></h1>
+      <p class="lede">Type it, say it, or photograph the page. Munshi keeps the hisaab.</p>
       <div class="cta">
-        <a class="btn primary" href="https://t.me/shiwans_munshi_bot">Try it on Telegram</a>
-        <a class="btn" href="https://github.com/Shiwans/Munshi">Source code (MIT)</a>
-        <a class="btn" href="#why">Why not the khata apps?</a>
-        <a class="btn" href="#open-source">What's inside</a>
+        <a class="btn primary" href="https://t.me/shiwans_munshi_bot">Try the demo</a>
+        <a class="btn" href="https://github.com/Shiwans/Munshi">Source code</a>
       </div>
     </div>
     <div class="phone" aria-label="Example chat with Munshi">
-      <div class="bar"><span>Munshi</span><span>8:42 am</span></div>
-      <div class="msg me">Sagar hotel 3 jalli 72kg 28 rate udhaar</div>
-      <div class="msg bot"><b>1. Sagar hotel</b> · 3 jalli · 72 kg × ₹28 = ₹2,016 · udhaar
+      <div class="bar">Munshi</div>
+      <div class="msg me">Sagar hotel 72kg 28 rate udhaar</div>
+      <div class="msg bot"><b>Sagar hotel</b>
+72 kg × ₹28 = <b>₹2,016</b> · udhaar
 haan likhu?</div>
-      <div class="keys"><span class="key">✅ Haan, likho</span><span class="key">❌ Nahi</span></div>
+      <div class="keys"><span class="key">✅ Haan</span><span class="key">❌ Nahi</span></div>
       <div class="msg me">🎤 "Sagar ne pandrah sau diye"</div>
-      <div class="msg bot">Suna: "Sagar ne 1500 diye"
-<b>1. Sagar hotel</b> · payment mila · ₹1,500</div>
-      <div class="msg me">Sagar ka baaki?</div>
-      <div class="msg bot">Sagar hotel ka baaki: <b>₹516</b></div>
+      <div class="msg bot">✅ ₹1,500 mila
+Sagar hotel ka baaki: <b>₹516</b></div>
     </div>
   </header>
 
-  <section aria-label="Results">
-    <div class="proof">
-      <div class="stat green"><b>96%</b><span>of rows read exactly from a real handwritten diary (55 of 57)</span></div>
-      <div class="stat red"><b>0</b><span>wrong rows that could be saved without a ⚠️ warning</span></div>
-      <div class="stat"><b>&lt; 1 s</b><span>for everyday lines and questions: answered by code, no AI needed</span></div>
-      <div class="stat"><b>5</b><span>languages: Hinglish, हिंदी, मराठी, ગુજરાતી, English</span></div>
+  <section class="center">
+    <span class="eyebrow">How it works</span>
+    <h2>Three steps. Nothing to learn.</h2>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><span class="big">✍️ 🎤 📷</span><h3>Send it</h3><p>A line, a voice note, or a photo of the diary page.</p></div>
+      <div class="step"><span class="n">2</span><span class="big">🧮</span><h3>Munshi checks</h3><p>Reads it, does the sums, flags anything unclear.</p></div>
+      <div class="step"><span class="n">3</span><span class="big">✅</span><h3>You tap haan</h3><p>Only then is it saved. Ask "baaki?" any time.</p></div>
     </div>
   </section>
 
-  <section id="problem">
-    <span class="eyebrow">The problem</span>
-    <div class="two">
-      <div style="display:grid;gap:14px">
-        <h2>The khata is still a paper diary and a chat with yourself</h2>
-        <p>In Dadar's wholesale market, a tomato trader sells to dozens of hotels and vendors a day, mostly on udhaar. Every sale goes into a red diary in their own shorthand, payments go in a side column, and the real balance lives in their head. Khata apps exist, but they ask the trader to stop and type into a screen. Nobody fills forms at 6 am with crates moving, so the diary wins.</p>
-      </div>
-      <div style="display:grid;gap:14px;align-content:start">
-        <p class="quote">"Diary mein likh deta hoon, baad mein hisaab karta hoon. Kabhi kabhi baad aata hi nahi."</p>
-        <ul class="plain muted">
-          <li>Udhaar is forgotten or disputed: "maine to 1500 diye the"</li>
-          <li>End-of-day totals take an hour with a calculator</li>
-          <li>Customers ask for a statement and get a photo of a messy page</li>
-          <li>Apps that ask for typing in forms get abandoned in a week</li>
-        </ul>
+  <section class="center">
+    <span class="eyebrow">Photo of the diary</span>
+    <h2>One photo. Every row checked.</h2>
+    <div class="ba">
+      <div class="page-diary" aria-label="Handwritten diary rows">विरेन्द्र &nbsp;80⟩45 = 3600<br>अंकुश &nbsp;95⟩50 + 5⟩30 = 4900<br>प्रकाश &nbsp;59⟩45 + 30⟩30 = 3555</div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="card">
+        <div class="row"><span>1. Virendra</span><span class="ok">₹3,600 ✓</span></div>
+        <div class="row"><span>2. Ankush</span><span class="ok">₹4,900 ✓</span></div>
+        <div class="row"><span>3. Prakash</span><span class="w">⚠️ 3,555 or 3,195?</span></div>
+        <div class="keys" style="margin-top:6px"><span class="key">✅ Haan</span><span class="key">✏️ 3 3555</span></div>
       </div>
     </div>
-  </section>
-
-  <section id="why">
-    <span class="eyebrow">There are already khata apps. Why Munshi?</span>
-    <h2>The apps digitised the ledger. Munshi digitises the munshi.</h2>
-    <p>Apps like Khatabook, OkCredit and Vyapar did the hard work of getting udhaar onto phones, and many shops use them. But they are made for people who are comfortable with apps: install, sign up, find the right screen, pick the customer, type each amount into a field. Many traders in Dadar, Vashi and APMC markets have never done any of that. The only things they do on a phone are call, send a voice note, take a photo and chat on WhatsApp.</p>
-    <p>Munshi is built for exactly them. There is nothing to learn: you chat with it the way you chat with your nephew who helps with the hisaab. Write a line, say it, or send a photo of the diary page. It reads, does the sums, and asks <b>"haan likhu?"</b> before writing anything down.</p>
-    <div class="scroll">
-      <table class="vs">
-        <thead><tr><th></th><th>Paper diary</th><th>Khata apps</th><th>Munshi</th></tr></thead>
-        <tbody>
-          <tr><td>Skill needed</td><td>Reading and writing</td><td>Comfort with apps: menus, forms, settings</td><td>Only what they already do on WhatsApp: type, speak, send a photo</td></tr>
-          <tr><td>Getting an entry in</td><td>Pen, already a habit</td><td>Open the app, find the customer, fill the screen, one entry at a time</td><td>One line, a voice note, or a photo of the page already written</td></tr>
-          <tr><td>Pages already written</td><td>Stay on paper</td><td>Retyped row by row, or left behind</td><td>One photo: every row read, numbered and checked</td></tr>
-          <tr><td>Trader's shorthand</td><td>Their own notation</td><td>Fixed fields</td><td>Reads <code>80⟩45 = 3600</code>, jalli, Hinglish, Devanagari names</td></tr>
-          <tr><td>qty × rate</td><td>Calculator, by hand</td><td>Worked out by the trader, then typed</td><td>Computed by code and shown: 72 kg × ₹28 = ₹2,016</td></tr>
-          <tr><td>Wrong sums on the page</td><td>Found late, if ever</td><td>Whatever is typed is saved</td><td>Flagged ⚠️ before saving: "page says 3,555, rows add to 3,195"</td></tr>
-          <tr><td>Where it lives</td><td>The diary</td><td>One more app to install and learn</td><td>A chat, nothing to install or learn (Telegram in this demo; WhatsApp is the goal)</td></tr>
-          <tr><td>Mistakes</td><td>Crossed out, still visible</td><td>Edited or deleted</td><td>Cancelled with a reversing entry; history stays honest</td></tr>
-          <tr><td>Asking a question</td><td>Flip pages</td><td>Tap through menus and reports</td><td>"Sagar ka baaki?" · "aaj ka hisaab"</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="two">
-      <p class="shift">If a trader can send a WhatsApp message, they can keep a proper khata. No app skills needed: Munshi does the tech part for them.</p>
-      <ul class="plain muted">
-        <li><b>No tech skill needed:</b> no menus, no forms, no settings. Tap ✅ or say "haan".</li>
-        <li><b>Zero switching cost:</b> no training, no change to how the day runs.</li>
-        <li><b>Day one is useful:</b> photograph last week's pages and the khata already has history.</li>
-        <li><b>Trust is built in:</b> AI only reads, code counts, the trader confirms every line.</li>
-        <li><b>Works with them, not against them:</b> export to Excel any time; nothing is locked in.</li>
-      </ul>
+    <div class="stats">
+      <div class="stat g"><b>96%</b><span>rows read exactly from a real diary</span></div>
+      <div class="stat r"><b>0</b><span>wrong rows saved without a ⚠️</span></div>
+      <div class="stat"><b>5</b><span>languages · हिंदी मराठी ગુજરાતી</span></div>
     </div>
   </section>
 
-  <section id="what">
-    <span class="eyebrow">What a trader can do</span>
-    <h2>Keep writing the way you already write</h2>
-    <div class="grid">
-      <div class="box"><span class="icon">✍️</span><h3>Type it like a note</h3><p>Hinglish, shorthand, your own words. Common lines are read instantly.</p><span class="say">Gupta dairy 10 kg 40 rate nagad</span></div>
-      <div class="box"><span class="icon">📷</span><h3>Photograph the diary page</h3><p>Every row becomes a numbered line with the working shown. Scanner PDFs work too.</p><span class="say">📷 → 21 rows, totals checked</span></div>
-      <div class="box"><span class="icon">🎤</span><h3>Say it</h3><p>A voice note in Hinglish. Munshi shows what it heard before anything else.</p><span class="say">Suna: "Sagar ne 1500 diye"</span></div>
-      <div class="box"><span class="icon">✅</span><h3>Confirm with one tap</h3><p>Fix any row in plain words before saving.</p><span class="say">4 3555 · 2 rate 30 · 13 hatao</span></div>
-      <div class="box"><span class="icon">💬</span><h3>Ask anything about the khata</h3><p>Balances, day totals, who owes the most.</p><span class="say">Sagar ka baaki? · aaj ka hisaab</span></div>
-      <div class="box"><span class="icon">📄</span><h3>Send a customer their statement</h3><p>Copy-ready text with every entry and the running balance.</p><span class="say">/statement Sagar</span></div>
-      <div class="box"><span class="icon">↩️</span><h3>Fix mistakes without erasing</h3><p>Cancel any past entry; both lines stay visible, like a crossed-out row.</p><span class="say">/last → galti 3</span></div>
-      <div class="box"><span class="icon">📊</span><h3>Take your data anywhere</h3><p>A clean report that opens on the phone, plus an Excel file.</p><span class="say">/export</span></div>
+  <section class="center">
+    <span class="eyebrow">Why not a khata app?</span>
+    <h2>Apps need app skills. Munshi needs a chat.</h2>
+    <div class="vs">
+      <div class="col"><h3>📒 Paper diary</h3><ul><li>Totals by calculator</li><li>Udhaar forgotten or disputed</li><li>No statement to send</li></ul></div>
+      <div class="col"><h3>📱 Khata apps</h3><ul><li>Install, sign up, learn menus</li><li>Type every entry into forms</li><li>Old diary pages left behind</li></ul></div>
+      <div class="col win"><h3>💬 Munshi</h3><ul><li>Just chat, type or speak</li><li>Photo of the page = entries</li><li>Maths and checks done for you</li></ul></div>
     </div>
   </section>
 
-  <section id="trust">
-    <span class="eyebrow">Why a trader can trust it</span>
-    <h2>Five promises Munshi keeps</h2>
+  <section class="center">
+    <span class="eyebrow">Safe with your money</span>
+    <h2>Built to be trusted.</h2>
     <div class="promises">
-      <div class="promise"><span class="tick">✓</span><div><h3>The AI never does the maths</h3><p>The model only reads what is written. Every total and balance is calculated by plain code, to the paisa, and the working is shown: 72 kg × ₹28 = ₹2,016.</p></div></div>
-      <div class="promise"><span class="tick">✓</span><div><h3>Nothing is saved without your haan</h3><p>Every entry, photo row and voice note comes back as a card first. New customers are marked "(naya customer)" so a misspelt name never quietly becomes a new account.</p></div></div>
-      <div class="promise"><span class="tick">✓</span><div><h3>It checks your diary's sums too</h3><p>If the page says 3,555 but the quantities add up to 3,195, Munshi asks which is right instead of guessing. Unreadable amounts are flagged, never invented.</p></div></div>
-      <div class="promise"><span class="tick">✓</span><div><h3>Nothing is ever erased</h3><p>Mistakes are cancelled with a reversing entry, so the history stays honest. Accidentally deleted everything? <code>/wapas</code> brings it back. A dated backup is kept every day.</p></div></div>
-      <div class="promise"><span class="tick">✓</span><div><h3>Your khata stays yours</h3><p>Each trader sees only their own data. Voice notes are transcribed on the laptop. In local mode, nothing at all leaves the machine. Off-topic messages and attempts to trick the AI are stopped before any model sees them.</p></div></div>
+      <div class="pr"><span class="big">🧮</span><h3>AI never does maths</h3><p>Code counts, to the paisa.</p></div>
+      <div class="pr"><span class="big">✅</span><h3>Nothing saved without haan</h3><p>You see every entry first.</p></div>
+      <div class="pr"><span class="big">↩️</span><h3>Nothing is erased</h3><p>Undo keeps history. Daily backup.</p></div>
+      <div class="pr"><span class="big">🔒</span><h3>Only you see your khata</h3><p>Can run fully offline.</p></div>
     </div>
   </section>
 
-  <section id="diary">
-    <span class="eyebrow">Tested on a real diary</span>
-    <h2>Three pages from a Dadar tomato trader</h2>
-    <p>Devanagari names, the trader's own notation (<code>qty⟩rate = total</code>), payments in the middle column, supplier purchases on the right. A sample of what the card showed:</p>
-    <div class="scroll">
+  <section class="center">
+    <span class="eyebrow">Open source</span>
+    <h2>Built on open models.</h2>
+    <div class="chips">
+      <span class="chip"><b>Gemma 4</b> <small>via the Gemini API · reads</small></span>
+      <span class="chip"><b>Qwen3.6</b> <small>offline backup</small></span>
+      <span class="chip"><b>Whisper</b> <small>voice</small></span>
+      <span class="chip"><b>nomic-embed</b> <small>name matching</small></span>
+      <span class="chip"><b>Laya</b> <small>blocks tricks</small></span>
+      <span class="chip"><b>Munshi</b> <small>MIT</small></span>
+    </div>
+    <details>
+      <summary>Full list with licenses</summary>
       <table>
-        <thead><tr><th>Diary says</th><th>Munshi checks</th><th>Card</th></tr></thead>
-        <tbody>
-          <tr><td class="mono">विरेन्द्र  80⟩45 = 3600</td><td class="mono">80 × ₹45 = ₹3,600</td><td class="pass">✓ matched to existing customer</td></tr>
-          <tr><td class="mono">अंकुश  95⟩50 + 5⟩30 = 4900</td><td class="mono">₹4,750 + ₹150</td><td class="pass">✓ two items on one line</td></tr>
-          <tr><td class="mono">प्रकाश  59⟩45 + 30⟩30 = 3555</td><td class="mono">read 51 → ₹3,195</td><td class="flag">⚠️ asks which is right</td></tr>
-          <tr><td class="mono">शिवा  30½⟩55 = 1678</td><td class="mono">₹1,677.50</td><td class="pass">✓ rounding accepted</td></tr>
-          <tr><td class="mono">वकील  102⟩</td><td class="mono">quantity only</td><td class="flag">⚠️ amount? never guessed</td></tr>
-          <tr><td class="mono">BA  20 × 800 = 16000</td><td class="mono">₹16,000</td><td class="pass">✓ remembered as a supplier</td></tr>
-        </tbody>
+        <tr><td><b>Gemma 4</b> (gemma-4-26b-a4b-it, via the Gemini API) · reads text and diary photos</td><td>Gemma open weights</td></tr>
+        <tr><td><b>Qwen3.6-35B-A3B</b> (local, LM Studio) · offline fallback</td><td>Apache 2.0</td></tr>
+        <tr><td><b>Whisper large-v3-turbo</b> (local, mlx-whisper) · voice notes</td><td>MIT</td></tr>
+        <tr><td><b>nomic-embed-text-v1.5</b> (local) · "Sagar" = "Sagar hotel"</td><td>Apache 2.0</td></tr>
+        <tr><td><b>Laya</b> multilingual (local, laya-serve) · stops prompt tricks</td><td>Apache 2.0</td></tr>
+        <tr><td><b>grammY</b> · <b>@google/genai</b> · <b>FFmpeg</b> · <b>Node.js</b> · <b>uv</b></td><td>MIT · Apache · LGPL</td></tr>
+        <tr><td><b>Munshi</b> · ledger, checks, languages, chat</td><td>MIT</td></tr>
       </table>
-    </div>
-    <p class="muted">Measured end to end against a hand-checked answer key: 55 of 57 customer rows exact, 7 misreads flagged before saving, none missed, none wrong without a warning. The page images stay private; the scoring script is in the repo.</p>
+    </details>
   </section>
 
-  <section id="languages">
-    <span class="eyebrow">Speaks the trader's language</span>
-    <h2>Replies in the language you write in</h2>
-    <div class="langs">
-      <span class="lang">Hinglish · <span class="t">haan likhu?</span></span>
-      <span class="lang">हिंदी · <span class="t">लिख दूँ?</span></span>
-      <span class="lang">मराठी · <span class="t">लिहू का?</span></span>
-      <span class="lang">ગુજરાતી · <span class="t">લખી દઉં?</span></span>
-      <span class="lang">English · <span class="t">Save it?</span></span>
-    </div>
-    <p class="muted">Amounts always in ₹ with Indian grouping (₹1,23,456). Short replies, one tap to confirm.</p>
-  </section>
-
-  <section id="open-source">
-    <span class="eyebrow">What's inside</span>
-    <h2>Built on open models and open tools</h2>
-    <p>Every model Munshi uses has open weights. Gemma reads through the Gemini API by default; switch one setting and the whole bot runs on the laptop with no cloud at all.</p>
-    <div class="scroll">
-      <table class="oss">
-        <thead><tr><th>Component</th><th>What it does for the trader</th><th>License</th></tr></thead>
-        <tbody>
-          <tr><td><span class="kind">Model</span><br><b>Gemma 4</b> <span class="where">gemma-4-26b-a4b-it via the Gemini API</span> <span class="lic m">Gemma open weights</span></td><td>Reads Hinglish lines and handwritten diary photos, and picks the right action</td><td><span class="lic">Gemma open weights</span></td></tr>
-          <tr><td><span class="kind">Model</span><br><b>Qwen3.6-35B-A3B</b> <span class="where">local, via LM Studio</span> <span class="lic m">Apache 2.0</span></td><td>Same job fully offline; takes over automatically if the internet drops</td><td><span class="lic">Apache 2.0</span></td></tr>
-          <tr><td><span class="kind">Model</span><br><b>Whisper large-v3-turbo</b> <span class="where">local, via mlx-whisper</span> <span class="lic m">MIT</span></td><td>Turns voice notes into text on the laptop</td><td><span class="lic">MIT</span></td></tr>
-          <tr><td><span class="kind">Model</span><br><b>nomic-embed-text-v1.5</b> <span class="where">local</span> <span class="lic m">Apache 2.0</span></td><td>Knows "Sagar", "Sagar hotel" and "Saagar" are the same customer</td><td><span class="lic">Apache 2.0</span></td></tr>
-          <tr><td><span class="kind">Model</span><br><b>Laya</b> (multilingual) <span class="where">local, via laya-serve</span> <span class="lic m">Apache 2.0</span></td><td>Stops attempts to trick the AI before any model sees them</td><td><span class="lic">Apache 2.0</span></td></tr>
-          <tr><td><span class="kind">Library</span><br><b>grammY</b> <span class="lic m">MIT</span></td><td>The Telegram chat: messages, photos, voice notes, tap buttons</td><td><span class="lic">MIT</span></td></tr>
-          <tr><td><span class="kind">Library</span><br><b>@google/genai</b> <span class="lic m">Apache 2.0</span></td><td>Connects to Gemma through the Gemini API</td><td><span class="lic">Apache 2.0</span></td></tr>
-          <tr><td><span class="kind">Tool</span><br><b>FFmpeg</b> <span class="lic m">LGPL / GPL</span></td><td>Shrinks diary photos and converts voice notes</td><td><span class="lic">LGPL / GPL</span></td></tr>
-          <tr><td><span class="kind">Runtime</span><br><b>Node.js</b> · <b>uv</b> <span class="lic m">MIT · Apache/MIT</span></td><td>Runs the bot; runs Whisper and Laya without setup</td><td><span class="lic">MIT · Apache/MIT</span></td></tr>
-          <tr><td><span class="kind">Standard</span><br><b>Agent Skills</b> <span class="where">skills/munshi-ledger</span> <span class="lic m">open spec</span></td><td>Lets other AI agents keep a khata with the same confirm-first rules</td><td><span class="lic">open spec</span></td></tr>
-          <tr><td><span class="kind">This project</span><br><b>Munshi</b> <span class="lic m">MIT</span></td><td>The bookkeeping rules, maths, checks, languages and chat</td><td><span class="lic">MIT</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="muted">LM Studio, used to serve Qwen and nomic locally, is free but not open source; any OpenAI-compatible local server works in its place. Data is stored as one plain JSON file per trader, with daily backups; no database or paid service is needed.</p>
-  </section>
-
-  <section id="next">
-    <span class="eyebrow">Where it goes next</span>
-    <h2>From the hack day to the market</h2>
-    <div class="road">
-      <div class="row"><span class="state now">Today</span><span>Text, diary photo and voice on Telegram · confirm cards with tap buttons · corrections and undo · balances, day totals, statements · visual export · five languages · fully local mode</span></div>
-      <div class="row"><span class="state next">Next</span><span><b>WhatsApp</b>, the one app every trader already knows; this is the main goal · <b>udhaar reminders</b> that send the customer their statement in one tap · a <b>supplier khata</b> for what the trader owes</span></div>
-      <div class="row"><span class="state later">Later</span><span>Rate history per item and customer · clerk enters, owner approves · a week of diary pages in one upload · a simple web view for the owner</span></div>
-    </div>
+  <section class="center">
+    <span class="eyebrow">Next</span>
+    <h2>On WhatsApp, where traders already are.</h2>
+    <p class="muted">Then: udhaar reminders to customers · supplier khata. The demo runs on Telegram today.</p>
   </section>
 
   <footer>
-    <p><b>Munshi</b> · MIT licensed · <a href="https://github.com/Shiwans/Munshi">github.com/Shiwans/Munshi</a> · <a href="https://t.me/shiwans_munshi_bot">@shiwans_munshi_bot</a></p>
-    <p>Built at Hacktoberfest Hack Day Mumbai, 11 October 2026. The bot answers while the demo laptop is running.</p>
+    <p><b>Munshi</b> · MIT · <a href="https://github.com/Shiwans/Munshi">GitHub</a> · <a href="https://t.me/shiwans_munshi_bot">Telegram demo</a></p>
+    <p>Hacktoberfest Hack Day Mumbai · 11 Oct 2026 · the demo bot answers while the laptop is on</p>
   </footer>
 </div>
 </body>
