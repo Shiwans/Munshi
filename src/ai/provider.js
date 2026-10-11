@@ -11,13 +11,13 @@ export async function chat(req) {
   const primary = providerName();
   try {
     const p = await load(primary);
-    return { ...(await p.chat(req)), fellBack: false };
+    return { ...(await p.chat(structuredClone(req))), fellBack: false }; // SDKs may mutate the request
   } catch (err) {
     if (primary === 'local' || process.env.MUNSHI_FALLBACK === 'off') throw err;
     console.error(`[provider] gemma failed (${err.message?.slice(0, 160)}), trying local`);
     try {
       const p = await load('local');
-      return { ...(await p.chat(req)), fellBack: true };
+      return { ...(await p.chat(structuredClone(req))), fellBack: true };
     } catch (err2) {
       console.error(`[provider] local failed too (${err2.message?.slice(0, 160)})`);
       throw err;

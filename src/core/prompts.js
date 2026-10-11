@@ -106,6 +106,7 @@ export function systemPrompt(data, { today, photo = false, lastCustomer = null }
     'NEVER compute totals or multiply. Extract only what is written: qty, unit, rate, and amount only if a total is explicitly written. Leave unknown numbers out.',
     'Example: "Sagar hotel 3 jalli 72kg 28 rate udhaar" → record_entries {type:sale, customer:"Sagar hotel", qtyLabel:"3 jalli", qty:72, unit:"kg", rate:28, paid:false}.',
     `The shop itself (${p.shopName || 'the trader'}) is never a customer. If the trader says usne/uska/unhone/he/she without a name, the customer is the one just discussed${lastCustomer ? `: "${lastCustomer}"` : ''}. If you cannot tell who, leave customer empty.`,
+    'Earlier messages are context ONLY (to know who "usne" is). Record entries from the LATEST message only — never re-record anything from earlier messages.',
     'Do not call update_profile unless the trader explicitly asks to change shop name or language.',
     'Questions about balances, totals or customers → call the matching query tool. Do not answer numbers yourself.',
   ];
