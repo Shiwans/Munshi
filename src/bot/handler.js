@@ -8,6 +8,7 @@ import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
 import { parseLine } from '../core/parse.js';
+import { buildCsv, buildReport } from '../core/report.js';
 import * as provider from '../ai/provider.js';
 import { transcribe as whisper } from '../ai/whisper.js';
 
@@ -69,7 +70,7 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       }
       return say(t(lang).langSet);
     }
-    if (/^\/export\b/.test(input)) return say(exportCsv(data, L));
+    if (/^\/export\b/.test(input)) return say(...exportFiles(data, L));
     if (/^\/wapas\b|^\/restore\b/.test(input)) return { replies: [], restore: true, save: false };
     // slash commands from Telegram's menu — answered by code
     let cmd;
@@ -190,6 +191,13 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const raw = correcting ? data.pending?.raw : input;
       data.pending = { kind: 'entries', source, raw, createdAt: store.nowIST().ts, rows: [] };
       for (const e of recorded) data.pending.rows.push(await draftRow(data, e));
+      if (image) {
+        // the page date is written once at the top: if the model gave it on some rows, it applies to all
+        const counts = {};
+        for (const r of data.pending.rows) if (r.date !== today()) counts[r.date] = (counts[r.date] || 0) + 1;
+        const pageDate = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        if (pageDate) data.pending.rows.forEach((r) => (r.date = pageDate));
+      }
       if (image && data.pendingProfile) {
         data.pending.diaryProfile = data.pendingProfile;
         delete data.pendingProfile;
@@ -631,19 +639,12 @@ async function quickQuery(data, input, L) {
   return null;
 }
 
-function exportCsv(data, L) {
-  const head = ['id', 'date', 'type', 'customer', 'qtyLabel', 'qty', 'unit', 'rate', 'amount', 'paid', 'item', 'note', 'source', 'reverses'];
-  const esc = (v) => (v === null || v === undefined ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
-  const rupees = (p) => (p === null || p === undefined ? '' : (p / 100).toFixed(2));
-  const lines = [head.join(',')];
-  for (const e of data.entries) {
-    lines.push(
-      [e.id, e.date, e.type, store.getCustomer(data, e.customerId)?.name, e.qtyLabel, e.qty, e.unit, rupees(e.ratePaise), rupees(e.amountPaise), e.paid, e.item, e.note, e.source, e.reverses]
-        .map(esc)
-        .join(','),
-    );
-  }
-  return { document: { filename: `munshi-khata-${store.nowIST().date}.csv`, data: Buffer.from(lines.join('\n'), 'utf8') }, caption: L.exportCaption };
+function exportFiles(data, L) {
+  const d = store.nowIST().date;
+  return [
+    { document: { filename: `munshi-khata-${d}.html`, data: Buffer.from(buildReport(data, L, d), 'utf8') }, caption: L.exportCaption },
+    { document: { filename: `munshi-khata-${d}.csv`, data: Buffer.from(buildCsv(data, L), 'utf8') }, caption: 'Excel / Sheets' },
+  ];
 }
 
 const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

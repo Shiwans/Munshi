@@ -116,7 +116,7 @@ export function systemPrompt(data, { today, photo = false, lastCustomer = null }
   if (photo) {
     lines.push(
       'The image is a page of the trader\'s handwritten diary (or a chit, bill or screenshot). Layouts differ per trader; read it as the trader would.',
-      'Read EVERY row top to bottom and call record_entries ONCE with all rows in order. Use the date printed or written at the top of the page for every row.',
+      'Read EVERY row top to bottom and call record_entries ONCE with all rows in order. Set date on EVERY row to the date printed or written at the top of the page (YYYY-MM-DD), not today.',
       'Keep names exactly as written, in the original script (e.g. Devanagari). Never translate or "fix" a name.',
       'For every row give qty, rate AND amount exactly as written, all three — code re-checks the diary\'s arithmetic. If only a quantity is written (e.g. "39⟩" with nothing after), give qty only and NO amount. A bare number is never an amount unless it is a total.',
       'Common notations: "45⟩45 = 2025" or "45)45" or "45 @ 45" or "45 x 45" means qty 45 at rate 45, total 2025. "56½" = 56.5. "5000/-" = ₹5000. Several pieces joined by "+" → use parts.',
