@@ -3,403 +3,277 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Munshi turns a trader's Hinglish line, voice note or diary photo into a checked khata. Gemma reads, code counts, the trader confirms.">
-<meta property="og:title" content="Munshi · मुंशी">
-<meta property="og:description" content="A bookkeeper in your chat for small Indian traders. Gemma 4 reads, code counts, the trader confirms. 96% of rows exact on real diary pages.">
 <title>Munshi · मुंशी — a bookkeeper in your chat</title>
-<style>
-a { color: inherit; text-decoration: none; } a.pill:hover { border-color: var(--bahi); }
-</style>
-
+<meta name="description" content="Munshi turns a trader's Hinglish message, voice note or diary photo into a checked khata. Nothing is saved until the trader says haan.">
+<meta property="og:title" content="Munshi · मुंशी">
+<meta property="og:description" content="A bookkeeper in your chat for small Indian traders. 96% of rows read exactly from a real handwritten diary. Built on open models.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a ruled diary page — blue ledger lines, a red margin rule down the left, content written in the columns. */
+/* Layout: a ruled diary page with a red margin rule; product story first, the open-source stack as a closing ledger. */
 :root {
-  --paper: #fbfcfe;
-  --ink: #1d2433;
-  --muted: #5d6779;
-  --rule: #d7e2f3;
-  --margin: #e0566a;
-  --bahi: #a4232f;
-  --ok: #1f7a4d;
-  --warn: #b76a00;
-  --chip: #eef3fb;
-  --card: #ffffff;
-  --gemma: #2f6fde;
-  --local: #7a4bd1;
+  --paper: #fbfcfe; --ink: #1d2433; --muted: #5d6779; --rule: #d7e2f3; --margin: #e0566a;
+  --bahi: #a4232f; --ok: #1f7a4d; --warn: #b76a00; --chip: #eef3fb; --card: #ffffff; --blue: #2f6fde; --violet: #7a4bd1;
   --display: "Tiro Devanagari Hindi", Georgia, "Times New Roman", serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
-    --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29;
-    --gemma: #7aa7ff; --local: #b693ff; color-scheme: dark;
-  }
+  :root:not([data-theme="light"]) { --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
+    --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; --violet: #b693ff; color-scheme: dark; }
 }
-:root[data-theme="dark"] {
-  --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
-  --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29;
-  --gemma: #7aa7ff; --local: #b693ff; color-scheme: dark;
-}
+:root[data-theme="dark"] { --paper: #12161f; --ink: #e6ebf5; --muted: #9aa5ba; --rule: #222b3b; --margin: #d4566a;
+  --bahi: #ef7a83; --ok: #5fcf95; --warn: #f0b04a; --chip: #1b2231; --card: #171d29; --blue: #7aa7ff; --violet: #b693ff; color-scheme: dark; }
 * { box-sizing: border-box; }
-body {
-  background-color: var(--paper);
-  background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
-  color: var(--ink);
-  font: 16px/1.6 var(--body);
-  padding-block: 0 64px;
-}
-.page { max-width: 1040px; margin: 0 auto; padding-inline: 20px; position: relative; }
-.page::before { content: ""; position: absolute; top: 0; bottom: -64px; left: 6px; width: 2px; background: var(--margin); opacity: .55; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background-color: var(--paper); background-image: repeating-linear-gradient(to bottom, transparent 0 31px, var(--rule) 31px 32px);
+  color: var(--ink); font: 16px/1.6 var(--body); padding-block: 0 72px; }
+a { color: inherit; }
+.page { max-width: 1060px; margin: 0 auto; padding-inline: 20px; position: relative; }
+.page::before { content: ""; position: absolute; top: 0; bottom: -72px; left: 6px; width: 2px; background: var(--margin); opacity: .55; }
 @media (min-width: 720px) { .page { padding-inline: 64px 32px; } .page::before { left: 40px; } }
 h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; line-height: 1.2; margin: 0; }
-h1 { font-size: clamp(2.4rem, 6vw, 4rem); color: var(--bahi); }
-h2 { font-size: clamp(1.6rem, 3.4vw, 2.2rem); }
-h3 { font-size: 1.25rem; }
+h1 { font-size: clamp(2.6rem, 7vw, 4.4rem); color: var(--bahi); }
+h2 { font-size: clamp(1.6rem, 3.6vw, 2.3rem); }
+h3 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; }
 p { margin: 0; max-width: 66ch; }
-code, .mono { font-family: var(--mono); font-size: .88em; }
-.eyebrow { font: 600 .75rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-section { padding-block: 48px 8px; display: grid; gap: 20px; }
-.lede { font-size: 1.15rem; color: var(--ink); }
+code { font-family: var(--mono); font-size: .86em; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+.eyebrow { font: 600 .74rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .muted { color: var(--muted); }
+section { padding-block: 52px 4px; display: grid; gap: 20px; }
 
-header.hero { padding-block: 56px 8px; display: grid; gap: 18px; }
-.motto { font-family: var(--display); font-size: clamp(1.3rem, 3vw, 1.7rem); }
+/* hero */
+.hero { padding-block: 56px 8px; display: grid; gap: 22px; grid-template-columns: 1fr; align-items: center; }
+@media (min-width: 900px) { .hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 380px); gap: 40px; } }
+.hero .lede { font-size: 1.18rem; }
+.motto { font-family: var(--display); font-size: clamp(1.3rem, 3vw, 1.75rem); }
 .motto b { color: var(--bahi); font-weight: 400; }
-.pills { display: flex; flex-wrap: wrap; gap: 8px; }
-.pill { font: 500 .8rem/1 var(--body); padding: 7px 10px; border-radius: 999px; background: var(--chip); border: 1px solid var(--rule); }
-.pill.g { color: var(--gemma); } .pill.l { color: var(--local); } .pill.k { color: var(--ok); }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn { font: 600 .92rem/1 var(--body); text-decoration: none; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--rule); background: var(--card); }
+.btn.primary { background: var(--bahi); color: var(--paper); border-color: var(--bahi); }
+.btn:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
-/* chat mock */
-.split { display: grid; gap: 28px; grid-template-columns: 1fr; align-items: start; }
-@media (min-width: 860px) { .split { grid-template-columns: minmax(0, 380px) minmax(0, 1fr); } }
-.phone { background: var(--card); border: 1px solid var(--rule); border-radius: 22px; padding: 14px; display: grid; gap: 10px; box-shadow: 0 10px 30px rgb(0 0 0 / .06); }
-.phone .bar { display: flex; justify-content: space-between; font-size: .8rem; color: var(--muted); padding: 2px 6px 8px; border-bottom: 1px solid var(--rule); }
-.msg { max-width: 92%; padding: 9px 12px; border-radius: 14px; font-size: .9rem; line-height: 1.45; white-space: pre-wrap; }
-.me { justify-self: end; background: var(--gemma); color: var(--paper); border-bottom-right-radius: 4px; }
-.bot { justify-self: start; background: var(--chip); border-bottom-left-radius: 4px; font-family: var(--mono); font-size: .8rem; }
-.bot .w { color: var(--warn); }
-.bot .ok { color: var(--ok); }
-.keys { display: flex; gap: 6px; flex-wrap: wrap; }
-.key { font: 500 .78rem/1 var(--body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); }
-.tag-plan { font: 600 .65rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--local); border: 1px dashed var(--local); border-radius: 4px; padding: 3px 5px; }
+/* phone */
+.phone { background: var(--card); border: 1px solid var(--rule); border-radius: 24px; padding: 14px; display: grid; gap: 9px; box-shadow: 0 14px 40px rgb(0 0 0 / .08); }
+.phone .bar { display: flex; justify-content: space-between; font-size: .78rem; color: var(--muted); padding: 2px 6px 8px; border-bottom: 1px solid var(--rule); }
+.msg { max-width: 92%; padding: 9px 12px; border-radius: 14px; font-size: .86rem; line-height: 1.45; white-space: pre-wrap; }
+.me { justify-self: end; background: var(--blue); color: var(--paper); border-bottom-right-radius: 4px; }
+.bot { justify-self: start; background: var(--chip); border-bottom-left-radius: 4px; font-family: var(--mono); font-size: .76rem; }
+.bot b { font-family: var(--body); }
+.keys { display: flex; gap: 6px; }
+.key { font: 500 .76rem/1 var(--body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--card); }
+.ok { color: var(--ok); } .w { color: var(--warn); }
 
-/* steps */
-.steps { display: grid; gap: 0; counter-reset: s; }
-.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--rule); }
-.step::before { counter-increment: s; content: counter(s); font: 500 .85rem/34px var(--mono); text-align: center; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--bahi); color: var(--bahi); }
-.step h3 { font-family: var(--body); font-weight: 600; font-size: 1rem; }
-.who { font: 600 .68rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; padding: 3px 6px; border-radius: 4px; margin-left: 6px; vertical-align: 2px; }
-.who.code { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
-.who.ai { background: color-mix(in srgb, var(--gemma) 15%, transparent); color: var(--gemma); }
-.who.you { background: color-mix(in srgb, var(--bahi) 14%, transparent); color: var(--bahi); }
+/* proof strip */
+.proof { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.stat { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 16px; display: grid; gap: 4px; align-content: start; }
+.stat b { font: 600 1.9rem/1.1 var(--body); font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: .88rem; }
+.stat.red b { color: var(--bahi); } .stat.green b { color: var(--ok); }
 
-/* diagram */
-.diagram { background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 12px; overflow-x: auto; }
-.diagram svg { display: block; min-width: 760px; width: 100%; height: auto; }
-.toggle { display: inline-flex; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--card); }
-.toggle button { font: 500 .85rem/1 var(--body); padding: 9px 14px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
-.toggle button[aria-pressed="true"] { background: var(--chip); color: var(--ink); }
-.toggle button:focus-visible, .key:focus-visible { outline: 2px solid var(--gemma); outline-offset: 2px; }
-.cloudnote { font-size: .9rem; }
+/* problem */
+.two { display: grid; gap: 22px; grid-template-columns: 1fr; }
+@media (min-width: 820px) { .two { grid-template-columns: 1fr 1fr; } }
+.quote { font-family: var(--display); font-size: 1.25rem; border-left: 3px solid var(--bahi); padding-left: 14px; }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
 
-/* diary check */
-.ledger { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.ledger th { text-align: left; font: 600 .72rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 2px solid var(--rule); }
-.ledger td { padding: 9px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
-.ledger .dev { font-family: var(--display); font-size: 1.05rem; }
-.ledger td.num { font-family: var(--mono); white-space: nowrap; }
-.flag { color: var(--warn); font-weight: 600; }
-.pass { color: var(--ok); font-weight: 600; }
-.scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 6px 10px; }
+/* features */
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.box { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 7px; align-content: start; }
+.box p { font-size: .92rem; color: var(--muted); }
+.box .say { font-family: var(--mono); font-size: .8rem; color: var(--ink); background: var(--chip); border-radius: 6px; padding: 6px 8px; }
+.icon { font-size: 1.3rem; line-height: 1; }
 
-/* trust table */
-.grid3 { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
-.box { background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 6px; align-content: start; }
-.box h3 { font-family: var(--body); font-weight: 600; font-size: .98rem; }
-.box p { font-size: .9rem; color: var(--muted); }
-.model { border-top: 3px solid var(--gemma); }
-.model.l { border-top-color: var(--local); }
-.model.k { border-top-color: var(--ok); }
-.model .name { font-family: var(--mono); font-size: .85rem; color: var(--ink); }
+/* promises */
+.promises { display: grid; gap: 0; }
+.promise { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding-block: 14px; border-bottom: 1px solid var(--rule); }
+.promise .tick { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--ok); color: var(--ok); display: grid; place-items: center; font-size: .8rem; margin-top: 2px; }
+.promise p { color: var(--muted); font-size: .94rem; }
 
-pre.json { margin: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; overflow-x: auto; font: .8rem/1.55 var(--mono); }
-.json .k { color: var(--gemma); } .json .n { color: var(--bahi); } .json .s { color: var(--ok); } .json .c { color: var(--muted); }
+/* diary table */
+.scroll { overflow-x: auto; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 6px 12px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 600 .7rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 8px; border-bottom: 2px solid var(--rule); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+td.mono { font-family: var(--mono); white-space: nowrap; font-size: .82rem; }
+.flag { color: var(--warn); font-weight: 600; } .pass { color: var(--ok); font-weight: 600; }
 
-.road { display: grid; gap: 10px; }
-.road .row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; padding-block: 8px; border-bottom: 1px solid var(--rule); font-size: .95rem; }
+/* languages */
+.langs { display: flex; flex-wrap: wrap; gap: 8px; }
+.lang { background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 7px 13px; font-size: .92rem; }
+.lang .t { font-family: var(--display); font-size: 1.05rem; }
+
+/* open source ledger */
+.oss th:last-child, .oss td:last-child { text-align: right; }
+.lic.m { display: none; }
+@media (max-width: 600px) { .oss th:last-child, .oss td:last-child { display: none; } .lic.m { display: inline-block; margin-top: 4px; } }
+.lic { font: 600 .72rem/1.9 var(--body); letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; background: var(--chip); white-space: nowrap; }
+.where { font-size: .78rem; color: var(--muted); display: block; }
+.kind { font: 600 .66rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.road { display: grid; gap: 0; }
+.road .row { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; padding-block: 10px; border-bottom: 1px solid var(--rule); }
 .state { font: 600 .7rem/1.9 var(--body); letter-spacing: .08em; text-transform: uppercase; }
-.state.done { color: var(--ok); } .state.next { color: var(--local); } .state.later { color: var(--muted); }
-footer { padding-block: 48px 0; font-size: .85rem; color: var(--muted); }
-@media (prefers-reduced-motion: no-preference) { .flowpath { transition: opacity .25s; } }
+.state.now { color: var(--ok); } .state.next { color: var(--violet); } .state.later { color: var(--muted); }
+footer { padding-block: 52px 0; font-size: .86rem; color: var(--muted); display: grid; gap: 6px; }
 </style>
-
 </head>
 <body>
 <div class="page">
+
   <header class="hero">
-    <span class="eyebrow">Hacktoberfest Hack Day Mumbai · 11 Oct 2026 · MIT</span>
-    <h1>Munshi <span class="muted" style="font-size:.5em">मुंशी</span></h1>
-    <p class="lede">A bookkeeper that lives in the chat. Small traders in Dadar market already write the day's business by hand in a diary or as notes to themselves. Munshi turns a typed line, a voice note, or a photo of the diary page into a proper khata: customers, udhaar, payments and the daily hisaab. The trader checks every entry before anything is saved.</p>
-    <p class="motto"><b>Gemma reads.</b> Code counts. <b>The trader confirms.</b></p>
-    <div class="pills">
-      <span class="pill g">gemma-4-26b-a4b-it via the Gemini API</span>
-      <span class="pill l">Qwen3.6-35B-A3B · local</span>
-      <span class="pill k">Whisper large-v3-turbo · local</span>
-      <span class="pill k">nomic-embed-text-v1.5 · local</span>
-      <span class="pill k">Laya · injection gate · local</span>
-      <span class="pill">Node 20 · Telegram · JSON files</span>
+    <div style="display:grid;gap:20px">
+      <span class="eyebrow">For small traders · Hacktoberfest Hack Day Mumbai 2026 · MIT</span>
+      <h1>Munshi <span class="muted" style="font-size:.5em">मुंशी</span></h1>
+      <p class="lede">A bookkeeper that lives in the chat the trader already uses. Type a line, send a voice note, or photograph the day's diary page. Munshi turns it into a proper khata: who bought what, who owes how much, and today's hisaab. Nothing is written until the trader says <b>haan</b>.</p>
+      <p class="motto"><b>Gemma reads.</b> Code counts. <b>The trader confirms.</b></p>
+      <div class="cta">
+        <a class="btn primary" href="https://t.me/shiwans_munshi_bot">Try it on Telegram</a>
+        <a class="btn" href="https://github.com/Shiwans/Munshi">Source code (MIT)</a>
+        <a class="btn" href="#open-source">What's inside</a>
+      </div>
+    </div>
+    <div class="phone" aria-label="Example chat with Munshi">
+      <div class="bar"><span>Munshi</span><span>8:42 am</span></div>
+      <div class="msg me">Sagar hotel 3 jalli 72kg 28 rate udhaar</div>
+      <div class="msg bot"><b>1. Sagar hotel</b> · 3 jalli · 72 kg × ₹28 = ₹2,016 · udhaar
+haan likhu?</div>
+      <div class="keys"><span class="key">✅ Haan, likho</span><span class="key">❌ Nahi</span></div>
+      <div class="msg me">🎤 "Sagar ne pandrah sau diye"</div>
+      <div class="msg bot">Suna: "Sagar ne 1500 diye"
+<b>1. Sagar hotel</b> · payment mila · ₹1,500</div>
+      <div class="msg me">Sagar ka baaki?</div>
+      <div class="msg bot">Sagar hotel ka baaki: <b>₹516</b></div>
     </div>
   </header>
-  <section id="links" style="padding-block:28px 0">
-    <div class="pills">
-      <a class="pill" href="https://github.com/Shiwans/Munshi">GitHub · source (MIT)</a>
-      <a class="pill" href="https://github.com/Shiwans/Munshi/blob/main/skills/munshi-ledger/SKILL.md">Agent skill</a>
-      <a class="pill" href="https://github.com/Shiwans/Munshi/blob/main/eval/run.js">Accuracy check</a>
-      <a class="pill" href="https://t.me/shiwans_munshi_bot">Try the bot on Telegram</a>
+
+  <section aria-label="Results">
+    <div class="proof">
+      <div class="stat green"><b>96%</b><span>of rows read exactly from a real handwritten diary (55 of 57)</span></div>
+      <div class="stat red"><b>0</b><span>wrong rows that could be saved without a ⚠️ warning</span></div>
+      <div class="stat"><b>&lt; 1 s</b><span>for everyday lines and questions: answered by code, no AI needed</span></div>
+      <div class="stat"><b>5</b><span>languages: Hinglish, हिंदी, मराठी, ગુજરાતી, English</span></div>
     </div>
   </section>
 
-
-  <section id="flow">
-    <span class="eyebrow">One message, end to end</span>
-    <h2>What happens when a trader types a line</h2>
-    <div class="split">
-      <div class="phone" aria-label="Example Telegram chat">
-        <div class="bar"><span>@shiwans_munshi_bot</span><span>13:30</span></div>
-        <div class="msg me">Sagar hotel 3 jalli 72kg 28 rate udhaar</div>
-        <div class="msg bot">1. Sagar hotel (naya customer) · 3 jalli · 72 kg × ₹28 = ₹2,016 · udhaar
-haan likhu? (haan / sudharo)</div>
-        <div class="keys" aria-label="Planned buttons"><span class="key">✅ Haan, likho</span><span class="key">✏️ Sudharo</span><span class="key">❌ Nahi</span></div>
-        <div class="msg me">haan</div>
-        <div class="msg bot"><span class="ok">✅ Likh diya.</span>
-Sagar hotel ka baaki ab ₹2,016.</div>
-        <div class="msg me">usne 1500 diye</div>
-        <div class="msg bot">1. Sagar hotel · payment mila · ₹1,500
-haan likhu? (haan / sudharo)</div>
-        <div class="msg me">Sagar ka baaki?</div>
-        <div class="msg bot">Sagar hotel ka baaki: ₹516</div>
+  <section id="problem">
+    <span class="eyebrow">The problem</span>
+    <div class="two">
+      <div style="display:grid;gap:14px">
+        <h2>The khata is still a paper diary and a chat with yourself</h2>
+        <p>In Dadar's wholesale market, a tomato trader sells to dozens of hotels and vendors a day, mostly on udhaar. Every sale goes into a red diary in their own shorthand, payments go in a side column, and the real balance lives in their head. Bookkeeping apps exist, but they want forms, English and a separate screen. Nobody fills forms at 6 am with crates moving.</p>
       </div>
-      <div class="steps">
-        <div class="step"><div><h3>Telegram delivers the message<span class="who code">adapter</span></h3><p class="muted"><code>telegram.js</code> long-polls Telegram from the laptop, so there is no webhook and no tunnel. Photos are shrunk to 1280 px. Voice notes go through Whisper on the laptop first.</p></div></div>
-        <div class="step"><div><h3>Easy messages never reach a model<span class="who code">code</span></h3><p class="muted">A parser reads the lines traders type most (<code>Sagar hotel 3 jalli 72kg 28 rate udhaar</code>, <code>Sagar ne 1500 diye</code>). <code>haan</code>, <code>13 hatao</code>, <code>4 rate 30</code>, <code>galti</code>, <code>X ka baaki</code>, <code>aaj ka hisaab</code> and every slash command are handled in <code>handler.js</code>. Instant, and nothing to hallucinate.</p></div></div>
-        <div class="step"><div><h3>Gemma reads the rest<span class="who ai">model</span></h3><p class="muted">One call with function calling. It must answer through a tool: <code>record_entries</code>, <code>get_khata</code>, <code>get_hisaab</code>, <code>statement</code>, <code>reply</code>. It extracts qty, rate and any written total. It never adds or multiplies.</p></div></div>
-        <div class="step"><div><h3>Code builds the card<span class="who code">code</span></h3><p class="muted">Names are matched to existing customers (alias, then spelling distance, then embeddings). <code>ledger.js</code> computes 72 × ₹28 in integer paise. If the diary's own total differs, the card asks which one is right.</p></div></div>
-        <div class="step"><div><h3>The trader says haan<span class="who you">trader</span></h3><p class="muted">Only now are entries written and new customers created. Before that, the card lives in <code>pending</code> and can be corrected by row number.</p></div></div>
-        <div class="step"><div><h3>Balances are always recomputed<span class="who code">code</span></h3><p class="muted">Nothing like "balance" is stored. Every answer is summed from the entries, so totals can't drift.</p></div></div>
+      <div style="display:grid;gap:14px;align-content:start">
+        <p class="quote">"Diary mein likh deta hoon, baad mein hisaab karta hoon. Kabhi kabhi baad aata hi nahi."</p>
+        <ul class="plain muted">
+          <li>Udhaar is forgotten or disputed: "maine to 1500 diye the"</li>
+          <li>End-of-day totals take an hour with a calculator</li>
+          <li>Customers ask for a statement and get a photo of a messy page</li>
+          <li>Apps that ask for typing in forms get abandoned in a week</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <section id="arch">
-    <span class="eyebrow">Architecture</span>
-    <h2>Small pieces, one brain, a swappable reader</h2>
-    <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
-      <div class="toggle" role="group" aria-label="Model provider">
-        <button type="button" id="btn-gemma" aria-pressed="true">Default: Gemma via Gemini API</button>
-        <button type="button" id="btn-local" aria-pressed="false">MUNSHI_PROVIDER=local</button>
-      </div>
-      <p class="cloudnote muted" id="cloudnote">Message text and photos go to the Gemini API for reading. The khata itself never leaves the laptop.</p>
+  <section id="what">
+    <span class="eyebrow">What a trader can do</span>
+    <h2>Keep writing the way you already write</h2>
+    <div class="grid">
+      <div class="box"><span class="icon">✍️</span><h3>Type it like a note</h3><p>Hinglish, shorthand, your own words. Common lines are read instantly.</p><span class="say">Gupta dairy 10 kg 40 rate nagad</span></div>
+      <div class="box"><span class="icon">📷</span><h3>Photograph the diary page</h3><p>Every row becomes a numbered line with the working shown. Scanner PDFs work too.</p><span class="say">📷 → 21 rows, totals checked</span></div>
+      <div class="box"><span class="icon">🎤</span><h3>Say it</h3><p>A voice note in Hinglish. Munshi shows what it heard before anything else.</p><span class="say">Suna: "Sagar ne 1500 diye"</span></div>
+      <div class="box"><span class="icon">✅</span><h3>Confirm with one tap</h3><p>Fix any row in plain words before saving.</p><span class="say">4 3555 · 2 rate 30 · 13 hatao</span></div>
+      <div class="box"><span class="icon">💬</span><h3>Ask anything about the khata</h3><p>Balances, day totals, who owes the most.</p><span class="say">Sagar ka baaki? · aaj ka hisaab</span></div>
+      <div class="box"><span class="icon">📄</span><h3>Send a customer their statement</h3><p>Copy-ready text with every entry and the running balance.</p><span class="say">/statement Sagar</span></div>
+      <div class="box"><span class="icon">↩️</span><h3>Fix mistakes without erasing</h3><p>Cancel any past entry; both lines stay visible, like a crossed-out row.</p><span class="say">/last → galti 3</span></div>
+      <div class="box"><span class="icon">📊</span><h3>Take your data anywhere</h3><p>A clean report that opens on the phone, plus an Excel file.</p><span class="say">/export</span></div>
     </div>
-    <div class="diagram">
-      <svg viewBox="0 0 980 430" role="img" aria-label="Munshi architecture diagram">
-        <defs>
-          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker>
-        </defs>
-        <style>
-          .bx { fill: var(--card); stroke: var(--rule); stroke-width: 1.5; }
-          .bx.core { stroke: var(--ok); }
-          .bx.ai { stroke: var(--gemma); }
-          .bx.lo { stroke: var(--local); }
-          .bx.you { stroke: var(--bahi); }
-          .t { fill: var(--ink); font: 600 14px var(--body); }
-          .s { fill: var(--muted); font: 12px var(--mono); }
-          .ln { stroke: var(--muted); stroke-width: 1.5; fill: none; }
-          .zone { fill: none; stroke: var(--rule); stroke-dasharray: 5 5; }
-          .zl { fill: var(--muted); font: 600 11px var(--body); letter-spacing: .08em; }
-        </style>
-        <rect class="zone" x="190" y="20" width="770" height="390" rx="14"/>
-        <text class="zl" x="206" y="40">THIS LAPTOP</text>
-
-        <rect class="bx you" x="20" y="150" width="140" height="80" rx="12"/>
-        <text class="t" x="36" y="182">Trader's phone</text>
-        <text class="s" x="36" y="204">Telegram chat</text>
-
-        <rect class="bx" x="220" y="150" width="150" height="80" rx="12"/>
-        <text class="t" x="236" y="182">telegram.js</text>
-        <text class="s" x="236" y="204">grammy, polling</text>
-
-        <rect class="bx lo" x="220" y="290" width="150" height="80" rx="12"/>
-        <text class="t" x="236" y="322">whisper.js</text>
-        <text class="s" x="236" y="344">voice → text</text>
-
-        <rect class="bx core" x="420" y="130" width="190" height="120" rx="12"/>
-        <text class="t" x="436" y="162">handler.js</text>
-        <text class="s" x="436" y="184">pending card · haan</text>
-        <text class="s" x="436" y="202">row fixes · undo</text>
-        <text class="s" x="436" y="220">quick queries</text>
-
-        <rect class="bx core" x="420" y="290" width="190" height="80" rx="12"/>
-        <text class="t" x="436" y="322">ledger.js · match.js</text>
-        <text class="s" x="436" y="344">paise math · names</text>
-
-        <rect class="bx" x="660" y="50" width="130" height="70" rx="12"/>
-        <text class="t" x="676" y="80">provider.js</text>
-        <text class="s" x="676" y="100">chat(...)</text>
-
-        <rect class="bx lo flowpath" id="box-local" x="820" y="130" width="130" height="80" rx="12"/>
-        <text class="t" x="836" y="160">LM Studio</text>
-        <text class="s" x="836" y="180">Qwen3.6-35B</text>
-        <text class="s" x="836" y="196">nomic-embed</text>
-
-        <rect class="bx" x="660" y="290" width="150" height="80" rx="12"/>
-        <text class="t" x="676" y="322">data/&lt;id&gt;.json</text>
-        <text class="s" x="676" y="344">one file per trader</text>
-
-        <path class="ln" d="M725 50 V24 H940" stroke="var(--gemma)" marker-end="url(#ar)"/>
-        <text class="s" x="760" y="16">↑ Gemini API (cloud)</text>
-
-        <path class="ln" d="M160 190 H216" marker-end="url(#ar)"/>
-        <path class="ln" d="M370 190 H416" marker-end="url(#ar)"/>
-        <path class="ln" d="M295 230 V286" marker-end="url(#ar)"/>
-        <path class="ln" d="M370 330 C395 330 395 230 416 222" marker-end="url(#ar)"/>
-        <path class="ln" d="M515 250 V286" marker-end="url(#ar)"/>
-        <path class="ln" d="M610 160 C640 160 640 90 656 88" marker-end="url(#ar)"/>
-        <path class="ln" d="M610 230 C640 240 640 330 656 330" marker-end="url(#ar)"/>
-        <path class="ln flowpath" id="to-local" d="M790 100 C810 110 830 120 860 128" marker-end="url(#ar)"/>
-        <path class="ln" d="M610 320 C720 270 800 230 840 212" marker-end="url(#ar)" stroke-dasharray="4 4"/>
-      </svg>
-    </div>
-    <div class="diagram" style="padding:12px 16px">
-      <svg viewBox="0 0 980 90" role="img" aria-label="Cloud services used by default">
-        <style>.t2{fill:var(--ink);font:600 14px var(--body)}.s2{fill:var(--muted);font:12px var(--mono)}</style>
-        <g id="cloudrow" class="flowpath">
-          <rect x="10" y="10" width="300" height="70" rx="12" fill="var(--card)" stroke="var(--gemma)" stroke-width="1.5"/>
-          <text class="t2" x="26" y="40">Gemini API · Google</text>
-          <text class="s2" x="26" y="62">gemma-4-26b-a4b-it reads text + photos</text>
-        </g>
-        <rect x="340" y="10" width="300" height="70" rx="12" fill="var(--card)" stroke="var(--rule)" stroke-width="1.5"/>
-        <text class="t2" x="356" y="40">Telegram</text>
-        <text class="s2" x="356" y="62">the chat itself</text>
-        <text class="s2" x="670" y="40">Outside the laptop. With the local</text>
-        <text class="s2" x="670" y="60">provider, only Telegram remains.</text>
-      </svg>
-    </div>
-    <p class="muted">If the Gemini call fails, <code>provider.js</code> retries on the local Qwen automatically and the reply starts with "(offline munshi)". <code>handler.js</code> never imports an SDK, so adding a provider is one file.</p>
-  </section>
-
-  <section id="diary">
-    <span class="eyebrow">Real diary, real check</span>
-    <h2>The model reads the page. Code re-checks the diary's own arithmetic.</h2>
-    <p>Tested on three scanned pages from a Dadar tomato trader: Devanagari names, rows written as <code>qty⟩rate = total</code>, payments in a middle column, supplier purchases on the right. Every row is recomputed in paise. Rounding to the rupee is accepted; real disagreements stop the save and ask.</p>
-    <div class="scroll">
-      <table class="ledger">
-        <thead><tr><th>#</th><th>Name as written</th><th>Diary says</th><th>Code computes</th><th>Card shows</th></tr></thead>
-        <tbody>
-          <tr><td>1</td><td class="dev">विरेन्द्र</td><td class="num">80⟩45 = 3600</td><td class="num">80 × ₹45 = ₹3,600</td><td class="pass">matches, existing customer</td></tr>
-          <tr><td>4</td><td class="dev">प्रकाश</td><td class="num">59⟩45 + 30⟩30 = 3555</td><td class="num">51 × ₹45 + 30 × ₹30 = ₹3,195</td><td class="flag">⚠️ asks: ₹3,195 or ₹3,555? (model misread 59)</td></tr>
-          <tr><td>6</td><td class="dev">अंकुश</td><td class="num">95⟩50 + 5⟩30 = 4900</td><td class="num">₹4,750 + ₹150 = ₹4,900</td><td class="pass">multi-part row verified</td></tr>
-          <tr><td>11</td><td class="dev">वकील</td><td class="num">102⟩</td><td class="num">qty only</td><td class="flag">⚠️ amount? (never guessed)</td></tr>
-          <tr><td>—</td><td class="dev">शिवा</td><td class="num">30½⟩55 = 1678</td><td class="num">₹1,677.50</td><td class="pass">rupee rounding accepted</td></tr>
-          <tr><td>20</td><td>BA</td><td class="num">20 × 800 = 16000</td><td class="num">₹16,000</td><td class="pass">learnt supplier → kharcha</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="grid3">
-      <div class="box model k"><span class="name">55 / 57</span><h3>customer rows exact (96%)</h3><p>Three real pages, scored by <code>eval/run.js</code> against a hand-checked answer key.</p></div>
-      <div class="box model"><span class="name">7</span><h3>misreads flagged ⚠️</h3><p>Wrong digits or missing amounts that the card refused to save until the trader answered.</p></div>
-      <div class="box model l"><span class="name">0</span><h3>wrong and unflagged</h3><p>The only kind of row a trader could save by mistake. None on any page.</p></div>
-    </div>
-    <p class="muted">On the second page every returning customer matched the first page's khata. Nobody was created twice. Corrections like <code>18 AZK</code> then <code>18 kharcha</code> teach Munshi that AZK is a supplier, permanently.</p>
   </section>
 
   <section id="trust">
-    <span class="eyebrow">Why it is not just a Gemma wrapper</span>
-    <h2>The trust layer is ours</h2>
-    <div class="grid3">
-      <div class="box"><h3>Money is integer paise</h3><p>All totals, balances and the day's hisaab come from <code>ledger.js</code>, pure functions with unit tests. The model output has no total field it could fill.</p></div>
-      <div class="box"><h3>No write without haan</h3><p>Model output only becomes a <code>pending</code> card. New customers are tagged <code>(naya customer)</code> and created on confirm.</p></div>
-      <div class="box"><h3>Entries are immutable</h3><p><code>galti</code> adds a reversing entry with <code>reverses: &lt;id&gt;</code>. Both stay visible, like a crossed line in a diary.</p></div>
-      <div class="box"><h3>Two gates before the model</h3><p>Code lets only bookkeeping through (numbers, ledger words, known names, photos, voice). Laya scores prompt-injection attempts. Blocked text gets a polite template and never reaches Gemma.</p></div>
-      <div class="box"><h3>Tools only, no free numbers</h3><p>Gemma is forced to answer through a function. The small-talk <code>reply</code> tool rejects any digits, so every number the trader sees came from code.</p></div>
-      <div class="box"><h3>Learns each trader</h3><p>Aliases from corrections, suppliers, the diary layout, and the last confirmed page as a worked example for the next photo.</p></div>
-      <div class="box"><h3>Their language</h3><p>Hinglish by default; Hindi, Marathi, Gujarati and English templates. The model cannot switch the language on its own.</p></div>
+    <span class="eyebrow">Why a trader can trust it</span>
+    <h2>Five promises Munshi keeps</h2>
+    <div class="promises">
+      <div class="promise"><span class="tick">✓</span><div><h3>The AI never does the maths</h3><p>The model only reads what is written. Every total and balance is calculated by plain code, to the paisa, and the working is shown: 72 kg × ₹28 = ₹2,016.</p></div></div>
+      <div class="promise"><span class="tick">✓</span><div><h3>Nothing is saved without your haan</h3><p>Every entry, photo row and voice note comes back as a card first. New customers are marked "(naya customer)" so a misspelt name never quietly becomes a new account.</p></div></div>
+      <div class="promise"><span class="tick">✓</span><div><h3>It checks your diary's sums too</h3><p>If the page says 3,555 but the quantities add up to 3,195, Munshi asks which is right instead of guessing. Unreadable amounts are flagged, never invented.</p></div></div>
+      <div class="promise"><span class="tick">✓</span><div><h3>Nothing is ever erased</h3><p>Mistakes are cancelled with a reversing entry, so the history stays honest. Accidentally deleted everything? <code>/wapas</code> brings it back. A dated backup is kept every day.</p></div></div>
+      <div class="promise"><span class="tick">✓</span><div><h3>Your khata stays yours</h3><p>Each trader sees only their own data. Voice notes are transcribed on the laptop. In local mode, nothing at all leaves the machine. Off-topic messages and attempts to trick the AI are stopped before any model sees them.</p></div></div>
     </div>
   </section>
 
-  <section id="models">
-    <span class="eyebrow">Models (all open weights)</span>
-    <h2>Five open models, each with one job</h2>
-    <div class="grid3">
-      <div class="box model"><span class="name">gemma-4-26b-a4b-it</span><h3>via the Gemini API</h3><p>Reads Hinglish text and diary photos, function calling, minimal thinking for ~3 s replies. A full page takes ~25 s.</p></div>
-      <div class="box model l"><span class="name">Qwen3.6-35B-A3B</span><h3>local, LM Studio</h3><p>Same tool interface. Fallback when the cloud fails, and the fully offline mode. Thinking off by prefilling an empty think block.</p></div>
-      <div class="box model k"><span class="name">Whisper large-v3-turbo</span><h3>local, mlx-whisper</h3><p>Voice notes in Hinglish. ogg → 16 kHz wav → text in ~6 s on an M1 Pro. Audio never leaves the laptop.</p></div>
-      <div class="box model k"><span class="name">Laya multilingual</span><h3>local, laya-serve</h3><p>Open-weight decision model. One ~50 ms yes/no pass flags prompt-injection attempts before any model sees the message (attacks scored 0.94–1.0, normal lines under 0.04).</p></div>
-      <div class="box model k"><span class="name">nomic-embed-text-v1.5</span><h3>local, LM Studio</h3><p>Last step of name matching when spelling distance is not enough, cosine ≥ 0.85.</p></div>
+  <section id="diary">
+    <span class="eyebrow">Tested on a real diary</span>
+    <h2>Three pages from a Dadar tomato trader</h2>
+    <p>Devanagari names, the trader's own notation (<code>qty⟩rate = total</code>), payments in the middle column, supplier purchases on the right. A sample of what the card showed:</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Diary says</th><th>Munshi checks</th><th>Card</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">विरेन्द्र  80⟩45 = 3600</td><td class="mono">80 × ₹45 = ₹3,600</td><td class="pass">✓ matched to existing customer</td></tr>
+          <tr><td class="mono">अंकुश  95⟩50 + 5⟩30 = 4900</td><td class="mono">₹4,750 + ₹150</td><td class="pass">✓ two items on one line</td></tr>
+          <tr><td class="mono">प्रकाश  59⟩45 + 30⟩30 = 3555</td><td class="mono">read 51 → ₹3,195</td><td class="flag">⚠️ asks which is right</td></tr>
+          <tr><td class="mono">शिवा  30½⟩55 = 1678</td><td class="mono">₹1,677.50</td><td class="pass">✓ rounding accepted</td></tr>
+          <tr><td class="mono">वकील  102⟩</td><td class="mono">quantity only</td><td class="flag">⚠️ amount? never guessed</td></tr>
+          <tr><td class="mono">BA  20 × 800 = 16000</td><td class="mono">₹16,000</td><td class="pass">✓ remembered as a supplier</td></tr>
+        </tbody>
+      </table>
     </div>
+    <p class="muted">Measured end to end against a hand-checked answer key: 55 of 57 customer rows exact, 7 misreads flagged before saving, none missed, none wrong without a warning. The page images stay private; the scoring script is in the repo.</p>
   </section>
 
-  <section id="data">
-    <span class="eyebrow">Storage</span>
-    <h2>One JSON file per trader, on the laptop</h2>
-    <div class="split" style="grid-template-columns:minmax(0,1fr)">
-      <pre class="json"><span class="c">// data/1181209091.json  (gitignored, atomic write: temp file + rename)</span>
-{
-  <span class="k">"profile"</span>:   { <span class="k">"shopName"</span>: <span class="s">"…"</span>, <span class="k">"language"</span>: <span class="s">"hinglish"</span>, <span class="k">"diaryProfile"</span>: <span class="s">"…"</span>, <span class="k">"suppliers"</span>: [<span class="s">"BA"</span>, <span class="s">"AZK"</span>] },
-  <span class="k">"customers"</span>: [ { <span class="k">"id"</span>: <span class="s">"c_mv3j…"</span>, <span class="k">"name"</span>: <span class="s">"Sagar hotel"</span>, <span class="k">"aliases"</span>: [<span class="s">"sagar"</span>] } ],
-  <span class="k">"entries"</span>: [ {
-    <span class="k">"date"</span>: <span class="s">"2026-10-11"</span>, <span class="k">"type"</span>: <span class="s">"sale"</span>, <span class="k">"customerId"</span>: <span class="s">"c_mv3j…"</span>,
-    <span class="k">"qty"</span>: <span class="n">72</span>, <span class="k">"unit"</span>: <span class="s">"kg"</span>, <span class="k">"ratePaise"</span>: <span class="n">2800</span>, <span class="k">"amountPaise"</span>: <span class="n">201600</span>, <span class="k">"paid"</span>: <span class="n">false</span>,
-    <span class="k">"qtyLabel"</span>: <span class="s">"3 jalli"</span>, <span class="k">"raw"</span>: <span class="s">"Sagar hotel 3 jalli 72 kg 28 rate udhaar"</span>,
-    <span class="k">"source"</span>: <span class="s">"text"</span>, <span class="k">"batch"</span>: <span class="s">"b_mv3j…"</span>, <span class="k">"reverses"</span>: <span class="n">null</span>
-  } ],
-  <span class="k">"pending"</span>: <span class="n">null</span>,   <span class="c">// the unconfirmed card lives here</span>
-  <span class="k">"history"</span>: [ … ]     <span class="c">// last 3 turns, text only, so "usne" resolves</span>
-}</pre>
+  <section id="languages">
+    <span class="eyebrow">Speaks the trader's language</span>
+    <h2>Replies in the language you write in</h2>
+    <div class="langs">
+      <span class="lang">Hinglish · <span class="t">haan likhu?</span></span>
+      <span class="lang">हिंदी · <span class="t">लिख दूँ?</span></span>
+      <span class="lang">मराठी · <span class="t">लिहू का?</span></span>
+      <span class="lang">ગુજરાતી · <span class="t">લખી દઉં?</span></span>
+      <span class="lang">English · <span class="t">Save it?</span></span>
     </div>
-    <p class="muted">Every save also writes a dated snapshot to <code>backups/&lt;trader&gt;/&lt;date&gt;.json</code> (point <code>MUNSHI_BACKUP_DIR</code> at a synced folder). <code>/delete</code> moves the khata to <code>trash/</code> and <code>/wapas</code> brings it back. Each trader only ever sees their own file: every model call is built from that trader's data alone.</p>
-    <p class="muted">Three entry types cover any small trade: <code>sale</code> (cash or udhaar), <code>payment</code> (received), <code>expense</code> (own costs and supplier purchases). Balance = udhaar sales − payments, computed on every question. <code>/export</code> sends a CSV; <code>/delete</code> wipes the file after a yes.</p>
+    <p class="muted">Amounts always in ₹ with Indian grouping (₹1,23,456). Short replies, one tap to confirm.</p>
   </section>
 
-  <section id="road">
-    <span class="eyebrow">Where it is going</span>
-    <h2>Built today, next, later</h2>
+  <section id="open-source">
+    <span class="eyebrow">What's inside</span>
+    <h2>Built on open models and open tools</h2>
+    <p>Every model Munshi uses has open weights. Gemma reads through the Gemini API by default; switch one setting and the whole bot runs on the laptop with no cloud at all.</p>
+    <div class="scroll">
+      <table class="oss">
+        <thead><tr><th>Component</th><th>What it does for the trader</th><th>License</th></tr></thead>
+        <tbody>
+          <tr><td><span class="kind">Model</span><br><b>Gemma 4</b> <span class="where">gemma-4-26b-a4b-it via the Gemini API</span> <span class="lic m">Gemma open weights</span></td><td>Reads Hinglish lines and handwritten diary photos, and picks the right action</td><td><span class="lic">Gemma open weights</span></td></tr>
+          <tr><td><span class="kind">Model</span><br><b>Qwen3.6-35B-A3B</b> <span class="where">local, via LM Studio</span> <span class="lic m">Apache 2.0</span></td><td>Same job fully offline; takes over automatically if the internet drops</td><td><span class="lic">Apache 2.0</span></td></tr>
+          <tr><td><span class="kind">Model</span><br><b>Whisper large-v3-turbo</b> <span class="where">local, via mlx-whisper</span> <span class="lic m">MIT</span></td><td>Turns voice notes into text on the laptop</td><td><span class="lic">MIT</span></td></tr>
+          <tr><td><span class="kind">Model</span><br><b>nomic-embed-text-v1.5</b> <span class="where">local</span> <span class="lic m">Apache 2.0</span></td><td>Knows "Sagar", "Sagar hotel" and "Saagar" are the same customer</td><td><span class="lic">Apache 2.0</span></td></tr>
+          <tr><td><span class="kind">Model</span><br><b>Laya</b> (multilingual) <span class="where">local, via laya-serve</span> <span class="lic m">Apache 2.0</span></td><td>Stops attempts to trick the AI before any model sees them</td><td><span class="lic">Apache 2.0</span></td></tr>
+          <tr><td><span class="kind">Library</span><br><b>grammY</b> <span class="lic m">MIT</span></td><td>The Telegram chat: messages, photos, voice notes, tap buttons</td><td><span class="lic">MIT</span></td></tr>
+          <tr><td><span class="kind">Library</span><br><b>@google/genai</b> <span class="lic m">Apache 2.0</span></td><td>Connects to Gemma through the Gemini API</td><td><span class="lic">Apache 2.0</span></td></tr>
+          <tr><td><span class="kind">Tool</span><br><b>FFmpeg</b> <span class="lic m">LGPL / GPL</span></td><td>Shrinks diary photos and converts voice notes</td><td><span class="lic">LGPL / GPL</span></td></tr>
+          <tr><td><span class="kind">Runtime</span><br><b>Node.js</b> · <b>uv</b> <span class="lic m">MIT · Apache/MIT</span></td><td>Runs the bot; runs Whisper and Laya without setup</td><td><span class="lic">MIT · Apache/MIT</span></td></tr>
+          <tr><td><span class="kind">Standard</span><br><b>Agent Skills</b> <span class="where">skills/munshi-ledger</span> <span class="lic m">open spec</span></td><td>Lets other AI agents keep a khata with the same confirm-first rules</td><td><span class="lic">open spec</span></td></tr>
+          <tr><td><span class="kind">This project</span><br><b>Munshi</b> <span class="lic m">MIT</span></td><td>The bookkeeping rules, maths, checks, languages and chat</td><td><span class="lic">MIT</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">LM Studio, used to serve Qwen and nomic locally, is free but not open source; any OpenAI-compatible local server works in its place. Data is stored as one plain JSON file per trader, with daily backups; no database or paid service is needed.</p>
+  </section>
+
+  <section id="next">
+    <span class="eyebrow">Where it goes next</span>
+    <h2>From the hack day to the market</h2>
     <div class="road">
-      <div class="row"><span class="state done">Built</span><span>Text, photo (incl. scanner PDFs) and voice on Telegram · confirm card with working · row corrections · undo · khata, hisaab, statement · supplier and alias learning · Hinglish/hi/mr/gu/en · Gemma ↔ Qwen fallback · tap buttons, formatted cards, onboarding · agent skill · code parser for common lines · /baaki /hisaab /statement /undo /wapas · backups + soft delete · 96% on real diary pages · 32 tests</span></div>
-      <div class="row"><span class="state next">Next</span><span>WhatsApp adapter (one more file; the handler is channel-agnostic) · reminders for old udhaar</span></div>
-      <div class="row"><span class="state later">Later</span><span>SQLite event log · udhaar ageing reminders · supplier khata · item-wise rate history · several users per shop</span></div>
+      <div class="row"><span class="state now">Today</span><span>Text, diary photo and voice on Telegram · confirm cards with tap buttons · corrections and undo · balances, day totals, statements · visual export · five languages · fully local mode</span></div>
+      <div class="row"><span class="state next">Next</span><span><b>WhatsApp</b>, where traders already are · <b>udhaar reminders</b> that send the customer their statement in one tap · a <b>supplier khata</b> for what the trader owes</span></div>
+      <div class="row"><span class="state later">Later</span><span>Rate history per item and customer · clerk enters, owner approves · a week of diary pages in one upload · a simple web view for the owner</span></div>
     </div>
   </section>
 
   <footer>
-    <p>Repo: <span class="mono">github.com/Shiwans/munshi</span> · MIT · <span class="mono">npm test</span> · <span class="mono">npm run dev</span> · <span class="mono">MUNSHI_PROVIDER=local npm run dev</span></p>
+    <p><b>Munshi</b> · MIT licensed · <a href="https://github.com/Shiwans/Munshi">github.com/Shiwans/Munshi</a> · <a href="https://t.me/shiwans_munshi_bot">@shiwans_munshi_bot</a></p>
+    <p>Built at Hacktoberfest Hack Day Mumbai, 11 October 2026. The bot answers while the demo laptop is running.</p>
   </footer>
 </div>
-
-<script>
-(function () {
-  var g = document.getElementById('btn-gemma'), l = document.getElementById('btn-local');
-  var note = document.getElementById('cloudnote');
-  var cloud = document.getElementById('cloudrow'), toLocal = document.getElementById('to-local'), boxLocal = document.getElementById('box-local');
-  function set(local) {
-    g.setAttribute('aria-pressed', String(!local));
-    l.setAttribute('aria-pressed', String(local));
-    cloud.style.opacity = local ? '0.25' : '1';
-    toLocal.style.strokeWidth = local ? '3' : '1.5';
-    toLocal.style.stroke = local ? 'var(--local)' : '';
-    boxLocal.style.strokeWidth = local ? '3' : '1.5';
-    note.textContent = local
-      ? 'Qwen on the laptop reads everything. Nothing but the Telegram chat leaves the machine.'
-      : 'Message text and photos go to the Gemini API for reading. The khata itself never leaves the laptop.';
-  }
-  g.addEventListener('click', function () { set(false); });
-  l.addEventListener('click', function () { set(true); });
-})();
-</script>
-
 </body>
 </html>
