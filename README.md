@@ -1,3 +1,5 @@
+<img src="docs/icons/icon-180.png" width="72" alt="Munshi icon" align="right">
+
 # Munshi · मुंशी
 
 **A bookkeeper in your chat.** Small Indian traders already write the day's business by hand in a diary or as
