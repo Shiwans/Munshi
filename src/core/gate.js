@@ -29,3 +29,12 @@ export function isRelevant(data, text, { hasMedia = false } = {}) {
   const names = [...data.customers.flatMap((c) => [c.name, ...c.aliases]), ...(data.profile.suppliers || [])];
   return names.some((n) => n && low.includes(String(n).toLowerCase().split(' ')[0]));
 }
+
+// numbers or a known name: never let a probabilistic judge block these on "relevance" alone
+export function hasStrongSignal(data, text) {
+  const s = String(text || '');
+  if (/\d|[०-९]|[૦-૯]/.test(s)) return true;
+  const low = s.toLowerCase();
+  const names = [...data.customers.flatMap((c) => [c.name, ...c.aliases]), ...(data.profile.suppliers || [])];
+  return names.some((n) => n && low.includes(String(n).toLowerCase().split(' ')[0]));
+}

@@ -8,7 +8,8 @@ import { toPaise, fmt, fmtQty } from '../core/money.js';
 import { matchCustomer } from '../core/match.js';
 import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
 import { parseLine } from '../core/parse.js';
-import { isRelevant } from '../core/gate.js';
+import { isRelevant, hasStrongSignal } from '../core/gate.js';
+import * as laya from '../ai/laya.js';
 import { buildCsv, buildReport } from '../core/report.js';
 import * as provider from '../ai/provider.js';
 import { transcribe as whisper } from '../ai/whisper.js';
@@ -18,7 +19,7 @@ const NO = /^(nahi|nahin|na|no|n|cancel|hatao|chhodo|rehne do|रहने द�
 const UNDO = /^(galti|galti ho gayi|undo|galat|गलती|चूक|ભૂલ)[\s.!]*$/i;
 const ROW = /^(\d{1,2})[\s.):-]+(.+)$/s;
 
-export function createHandler({ chat = provider.chat, transcribe = null, today = () => store.nowIST().date, parse = parseLine } = {}) {
+export function createHandler({ chat = provider.chat, transcribe = null, today = () => store.nowIST().date, parse = parseLine, judge = laya.check } = {}) {
   async function handleMessage({ traderId, text = '', image = null, audio = null }) {
     const data = store.load(traderId);
     const firstTime = !store.exists(traderId);
@@ -152,8 +153,18 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       return res;
     }
 
-    // relevance gate: only bookkeeping reaches the model
-    if (!isRelevant(data, input, { hasMedia: !!image })) {
+    // relevance gate, layer 1 (code, free): only bookkeeping reaches the model
+    let blocked = !isRelevant(data, input, { hasMedia: !!image });
+    // layer 2 (Laya, local open-weight decision model, ~30 ms): role-change attempts and off-topic text
+    if (!blocked && !image && !data.pending) {
+      const v = await judge(input);
+      if (v) {
+        console.log(`[laya] bookkeeping=${v.bookkeeping?.toFixed(2)} injection=${v.injection?.toFixed(2)}`);
+        if (v.injection >= 0.8) blocked = true;
+        else if (v.bookkeeping !== null && v.bookkeeping < 0.15 && !hasStrongSignal(data, input)) blocked = true;
+      }
+    }
+    if (blocked) {
       const out = [L.offTopic];
       if (firstTime) out.unshift(welcome(L));
       return say(...out);
