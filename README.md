@@ -66,6 +66,17 @@ column, supplier purchases on the right). Gemma reads each row; `ledger.js` reco
 On the second page every returning customer matched the first page's khata; suppliers taught once (`18 kharcha`) are
 remembered.
 
+**Measured** with [`eval/run.js`](eval/run.js) against a hand-checked answer key ([`eval/diary-key.json`](eval/diary-key.json);
+the page images stay private):
+
+```
+TOTAL  55/57 customer rows exact (96%)
+       7 misreads caught and flagged ⚠️ before saving
+       0 rows wrong and NOT flagged  ← the only ones a trader could save by mistake
+       0 rows missed
+       74 s for 3 pages
+```
+
 ## Why it is more than a model wrapper
 1. **The model never computes money.** Amounts are integer paise. [`src/core/ledger.js`](src/core/ledger.js) is the only
    source of totals, balances and hisaab: pure functions, unit-tested. A free-text model answer containing digits is discarded.
@@ -93,6 +104,7 @@ src/ai     provider.js · gemma.js · local.js · whisper.js · image.js
 src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
 src/cli.js            same handler from the terminal
 skills/munshi-ledger  Agent Skill (agentskills.io spec)
+eval/                 diary accuracy check (real pages vs answer key)
 test/                 node:test — 32 tests
 ```
 

@@ -121,6 +121,7 @@ export function systemPrompt(data, { today, photo = false, lastCustomer = null }
       'For every row give qty, rate AND amount exactly as written, all three — code re-checks the diary\'s arithmetic. If only a quantity is written (e.g. "39⟩" with nothing after), give qty only and NO amount. A bare number is never an amount unless it is a total.',
       'Common notations: "45⟩45 = 2025" or "45)45" or "45 @ 45" or "45 x 45" means qty 45 at rate 45, total 2025. "56½" = 56.5. "5000/-" = ₹5000. Several pieces joined by "+" → use parts.',
       'A separate amount on the same row in another column (often the middle one) is usually money received from that customer (jama/cash/cheque) → add a separate payment entry for that customer.',
+      'Before you answer, scan the MIDDLE column from top to bottom on its own. Every amount there (like "5000/-", "2000/-", "1100/-") must become a payment entry for the customer on that line. Missing one is the most common mistake.',
       'A separate block for a supplier or wholesaler (e.g. initials like "BA", "SK" with qty × rate, or "जमा"/"paid" amounts) is the trader\'s purchase or payment to that supplier → type expense with supplier set (both purchases "15 × 1100" and payments "जमा 27500").',
       'Rows with a name but missing numbers: still include them with what is readable. Unclear digit → leave the number out, set confidence low. Never invent or calculate totals.',
       'Crossed-out rows are cancelled → skip. Default for a customer sale: paid=false (udhaar) unless marked cash/nagad.',

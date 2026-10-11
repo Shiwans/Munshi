@@ -360,6 +360,10 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       const sales = rows.filter((r) => r.type === 'sale');
       const withWorking = sales.filter((r) => r.computedPaise !== null && r.computedPaise !== undefined).length;
       if (withWorking * 2 > sales.length) sales.forEach((r) => (r.computedPaise === null || r.computedPaise === undefined) && r.chosenPaise == null && (r.confidence = Math.min(r.confidence, 0.5)));
+      // an amount far above everything else on the page (an extra zero?) gets a second look
+      const amounts = rows.map((r) => r.amountPaise).filter((a) => Number.isInteger(a) && a > 0).sort((a, b) => a - b);
+      const median = amounts[Math.floor(amounts.length / 2)];
+      if (amounts.length >= 5) rows.forEach((r) => r.amountPaise > 10 * median && r.chosenPaise == null && (r.confidence = Math.min(r.confidence, 0.5)));
     }
     const dates = new Set(rows.map((r) => r.date));
     const shared = rows.length > 1 && dates.size === 1 && rows[0].date !== today() ? rows[0].date : null;
