@@ -73,9 +73,36 @@ export function remove(traderId) {
   if (fs.existsSync(f)) fs.unlinkSync(f);
 }
 
-// /delete means delete: the trader's backups go too.
-export function removeBackups(traderId) {
-  fs.rmSync(path.join(BACKUP_DIR, safeId(traderId)), { recursive: true, force: true });
+// /delete is a soft delete: the khata and its backups move to trash/, and /wapas brings them back.
+export const TRASH_DIR = process.env.MUNSHI_TRASH_DIR || path.join(DATA_DIR, '..', 'trash');
+
+export function trash(traderId) {
+  const id = safeId(traderId);
+  const dest = path.join(TRASH_DIR, `${id}--${Date.now()}`);
+  fs.mkdirSync(dest, { recursive: true });
+  const f = fileFor(traderId);
+  if (fs.existsSync(f)) fs.renameSync(f, path.join(dest, 'khata.json'));
+  const b = path.join(BACKUP_DIR, id);
+  if (fs.existsSync(b)) fs.renameSync(b, path.join(dest, 'backups'));
+  return dest;
+}
+
+export function restore(traderId) {
+  const id = safeId(traderId);
+  if (!fs.existsSync(TRASH_DIR)) return false;
+  const latest = fs.readdirSync(TRASH_DIR).filter((d) => d.startsWith(`${id}--`)).sort().at(-1);
+  if (!latest) return false;
+  const src = path.join(TRASH_DIR, latest);
+  if (!fs.existsSync(path.join(src, 'khata.json'))) return false;
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.renameSync(path.join(src, 'khata.json'), fileFor(traderId));
+  const b = path.join(BACKUP_DIR, id);
+  if (fs.existsSync(path.join(src, 'backups'))) {
+    fs.rmSync(b, { recursive: true, force: true }); // only the empty post-delete snapshot lives here
+    fs.renameSync(path.join(src, 'backups'), b);
+  }
+  fs.rmSync(src, { recursive: true, force: true });
+  return true;
 }
 
 // --- customers -------------------------------------------------------------

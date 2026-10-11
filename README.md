@@ -48,7 +48,8 @@ You:    📷 diary page            →  numbered card, one row per line, the dia
 - **Confirm or correct**: tap ✅, or fix by row number: `4 3555`, `2 rate 30`, `13 hatao`, `1 Gupta Dairy`, `18 kharcha`, `sab udhaar`.
 - **Ask**: `Sagar ka baaki`, `Sagar ka statement` (copy-ready for the customer), `aaj ka hisaab`, `kal`, `is hafte`, `customers`.
 - **Mistakes**: `galti` → a reversing entry. Nothing is ever edited or deleted.
-- **Languages**: Hinglish (default), Hindi, Marathi, Gujarati, English. `/bhasha`, `/help`, `/export` (CSV), `/delete`.
+- **Commands**: `/hisaab [kal|hafta|mahina]`, `/baaki Sagar`, `/statement Sagar`, `/customers`, `/undo`, `/export` (CSV), `/delete` (soft: `/wapas` brings it back), `/bhasha`, `/help`.
+- **Languages**: Hinglish (default), Hindi, Marathi, Gujarati, English.
 
 ### Tested on a real diary
 Three scanned pages from a Dadar tomato trader (Devanagari names, rows written `qty⟩rate = total`, payments in a middle
@@ -73,7 +74,7 @@ remembered.
 3. **Immutable entries.** Corrections are reversing entries (`reverses: <id>`); both stay visible.
 4. **Learns each trader.** Aliases from corrections, a supplier list, the diary layout, and the last confirmed page as a
    worked example for the next photo.
-5. **Common questions skip the model.** `haan`, row fixes, baaki, hisaab, statement are answered by code in under a second.
+5. **Common lines and questions skip the model.** A code parser reads the lines traders type most (`Sagar hotel 3 jalli 72kg 28 rate udhaar`, `Sagar ne 1500 diye`); `haan`, row fixes, baaki, hisaab, statement and every slash command are answered by code in under a second. Gemma only sees what code can't read.
 6. **Swappable reader.** `provider.js` exposes one `chat()`; Gemma and Qwen implement it. If Gemma fails, Qwen answers and
    the reply says `(offline munshi)`.
 
@@ -87,16 +88,19 @@ remembered.
 ```
 
 ```
-src/core   ledger.js · money.js · store.js · match.js · prompts.js
+src/core   ledger.js · money.js · parse.js · store.js · match.js · prompts.js
 src/ai     provider.js · gemma.js · local.js · whisper.js · image.js
 src/bot    handler.js (channel-agnostic) · telegram.js (adapter)
 src/cli.js            same handler from the terminal
 skills/munshi-ledger  Agent Skill (agentskills.io spec)
-test/                 node:test — 26 tests
+test/                 node:test — 32 tests
 ```
 
 **Storage**: one JSON file per trader, `data/<telegram-user-id>.json`, with `profile`, `customers`, `entries`,
-`pending`, `history`. Balances are never stored; they are summed from the entries on every question.
+`pending`, `history`. Balances are never stored; they are summed from the entries on every question. Every save also
+writes a dated snapshot to `backups/<trader>/<date>.json` (`MUNSHI_BACKUP_DIR` can point at a synced folder or USB
+drive). `/delete` moves the khata to `trash/`; `/wapas` restores it. Each trader only ever sees their own file: every
+model call is built from that trader's data alone.
 Voice audio and the khata never leave the laptop; with `MUNSHI_PROVIDER=local`, message text and photos don't either.
 
 ## Run
@@ -139,7 +143,7 @@ node src/cli.js hisaab today
 
 ## Roadmap
 - **WhatsApp adapter** next: the handler is channel-agnostic, so it is one more file beside `telegram.js`.
-- Reminders for old udhaar, PDF statement to forward, several users per shop, item-wise rate history, backups.
+- SQLite storage (one file, no server) once there are many traders; reminders for old udhaar, PDF statement to forward, several users per shop, item-wise rate history.
 
 ## License
 MIT — see [LICENSE](LICENSE).

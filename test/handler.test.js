@@ -200,3 +200,22 @@ test('parser path: common lines build the card with zero model calls', async () 
   assert.match(pay, /Sagar → Sagar hotel · payment mila · ₹1,500/);
   assert.equal(calls.length, n, 'no model call');
 });
+
+test('slash commands answer from code; /delete is soft and /wapas restores everything', async () => {
+  const n = calls.length;
+  const [b] = await say('a', '/baaki Sagar');
+  assert.match(b, /Sagar hotel ka baaki/);
+  const [h] = await say('a', '/hisaab');
+  assert.match(h, /Hisaab/);
+  const [c] = await say('a', '/customers');
+  assert.match(c, /Sagar hotel/);
+  assert.equal(calls.length, n, 'no model call');
+  const before = store.load('a').entries.length;
+  await say('a', '/delete');
+  const [gone] = await say('a', 'haan');
+  assert.match(gone, /\/wapas/);
+  assert.equal(store.load('a').entries.length, 0);
+  const [back] = await say('a', '/wapas');
+  assert.match(back, /wapas aa gaya/);
+  assert.equal(store.load('a').entries.length, before);
+});

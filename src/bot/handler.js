@@ -44,7 +44,11 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
     }
 
     const out = await route({ data, input, image, L, firstTime });
-    if (out.wiped) store.removeBackups(traderId);
+    if (out.wiped) store.trash(traderId);
+    if (out.restore) {
+      const ok = store.restore(traderId);
+      return [...replies, ok ? t(store.load(traderId).profile.language).restored : L.nothingToRestore];
+    }
     if (out.save !== false) store.save(traderId, data);
     return [...replies, ...out.replies];
   }
@@ -66,6 +70,17 @@ export function createHandler({ chat = provider.chat, transcribe = null, today =
       return say(t(lang).langSet);
     }
     if (/^\/export\b/.test(input)) return say(exportCsv(data, L));
+    if (/^\/wapas\b|^\/restore\b/.test(input)) return { replies: [], restore: true, save: false };
+    // slash commands from Telegram's menu — answered by code
+    let cmd;
+    if ((cmd = input.match(/^\/(baaki|khata|balance)(?:@\w+)?\s*(.*)$/i))) return say(...(cmd[2] ? await khataReply(data, cmd[2], L) : [customersReply(data, L)]));
+    if ((cmd = input.match(/^\/(statement|bill)(?:@\w+)?\s*(.*)$/i))) return say(...(cmd[2] ? await statementReply(data, { customer: cmd[2] }, L) : [L.askName]));
+    if ((cmd = input.match(/^\/(hisaab|hisab|summary)(?:@\w+)?\s*(.*)$/i))) {
+      const p = { kal: 'yesterday', yesterday: 'yesterday', hafta: 'week', week: 'week', mahina: 'month', month: 'month', sab: 'all', all: 'all' }[cmd[2].trim().toLowerCase()] || 'today';
+      return say(hisaabReply(data, { period: p }, L));
+    }
+    if (/^\/(customers|grahak)\b/i.test(input)) return say(customersReply(data, L));
+    if (/^\/(undo|galti)\b/i.test(input)) return askUndo(data, L);
     if (/^\/delete\b/.test(input)) {
       data.pending = { kind: 'delete', createdAt: store.nowIST().ts };
       return say(yesNo(L.deleteQ, L));

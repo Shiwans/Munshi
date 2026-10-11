@@ -119,10 +119,16 @@ bot.on(['message:voice', 'message:audio'], (ctx) =>
 bot.catch((err) => console.error('[grammy]', err.message));
 
 await bot.api.setMyCommands([
+  { command: 'hisaab', description: 'Aaj ka hisaab (/hisaab kal · hafta · mahina)' },
+  { command: 'baaki', description: 'Kiska kitna baaki: /baaki Sagar' },
+  { command: 'statement', description: 'Customer ko bhejne layak hisaab: /statement Sagar' },
+  { command: 'customers', description: 'Sab customers aur baaki' },
+  { command: 'undo', description: 'Pichhli entry cancel karo' },
   { command: 'help', description: 'Kaise use kare' },
   { command: 'bhasha', description: 'Bhasha badlo: hinglish / hindi / marathi / gujarati / english' },
   { command: 'export', description: 'Pura khata CSV mein' },
-  { command: 'delete', description: 'Mera data mita do' },
+  { command: 'delete', description: 'Mera data hatao (/wapas se laut aata hai)' },
+  { command: 'wapas', description: 'Hataya hua khata wapas lao' },
 ]).catch(() => {});
 
 bot.start({
