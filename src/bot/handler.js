@@ -1,0 +1,533 @@
+// Channel-agnostic brain. handleMessage({traderId, text?, image?, audio?}) → replies[]
+// A reply is a string, or { document: { filename, data: Buffer }, caption }.
+// Rules: model output only ever lands in `pending`; only an explicit "haan" writes. Money is paise, math is ledger.js.
+
+import * as store from '../core/store.js';
+import * as ledger from '../core/ledger.js';
+import { toPaise, fmt, fmtQty } from '../core/money.js';
+import { matchCustomer } from '../core/match.js';
+import { TOOLS, systemPrompt, correctionPrompt, t, parseLang } from '../core/prompts.js';
+import * as provider from '../ai/provider.js';
+
+const YES = /^(haan|haa+|ha|han|hanji|haanji|ji|ok+|okay|yes|y|theek|thik|sahi|done|likho|save|✅|👍|1|हाँ|हां|हो|होय|हा|ઠીક|હા)[\s.!]*$/i;
+const NO = /^(nahi|nahin|na|no|n|cancel|hatao|chhodo|rehne do|रहने दो|नहीं|नाही|ના|❌)[\s.!]*$/i;
+const UNDO = /^(galti|galti ho gayi|undo|galat|गलती|चूक|ભૂલ)[\s.!]*$/i;
+const ROW = /^(\d{1,2})[\s.):-]+(.+)$/s;
+
+export function createHandler({ chat = provider.chat, transcribe = null, today = () => store.nowIST().date } = {}) {
+  async function handleMessage({ traderId, text = '', image = null, audio = null }) {
+    const data = store.load(traderId);
+    const firstTime = !store.exists(traderId);
+    let L = t(data.profile.language);
+    const replies = [];
+    let input = String(text || '').trim();
+
+    if (audio) {
+      if (!transcribe) return [L.tryAgain];
+      try {
+        input = (await transcribe(audio)).trim();
+      } catch (err) {
+        console.error('[whisper]', err.message);
+        return [L.tryAgain];
+      }
+      if (!input) return [L.notUnderstood];
+      replies.push(`${L.heard}: "${input}"`);
+    }
+
+    // script → language (only switches when the trader clearly writes in another script)
+    const detected = detectLang(input, data.profile.language);
+    if (detected !== data.profile.language) {
+      data.profile.language = detected;
+      L = t(detected);
+    }
+
+    const out = await route({ data, input, image, L, firstTime });
+    if (out.save !== false) store.save(traderId, data);
+    return [...replies, ...out.replies];
+  }
+
+  // --- routing ---------------------------------------------------------------
+  async function route({ data, input, image, L, firstTime }) {
+    const say = (...r) => ({ replies: r });
+
+    if (/^\/start\b/.test(input)) return say(L.welcome);
+    if (/^\/help\b/.test(input)) return say(L.help);
+    if (/^\/(bhasha|language|lang)\b/.test(input)) {
+      const lang = parseLang(input.split(/\s+/)[1]);
+      if (!lang) return say(L.langAsk);
+      data.profile.language = lang;
+      return say(t(lang).langSet);
+    }
+    if (/^\/export\b/.test(input)) return say(exportCsv(data, L));
+    if (/^\/delete\b/.test(input)) {
+      data.pending = { kind: 'delete', createdAt: store.nowIST().ts };
+      return say(L.deleteQ);
+    }
+
+    // answers to a pending card
+    if (data.pending && !image) {
+      if (YES.test(input)) return confirm(data, L);
+      if (NO.test(input)) {
+        data.pending = null;
+        return say(L.cancelled);
+      }
+      if (data.pending.kind === 'entries') {
+        const m = input.match(ROW);
+        if (m && Number(m[1]) >= 1 && Number(m[1]) <= data.pending.rows.length) {
+          const handled = await correctRow(data, Number(m[1]) - 1, m[2].trim(), L);
+          if (handled) return say(renderCard(data, L));
+        }
+        if (/^(sab|all|सब|सगळ|બધ)\S*\s+(udhaar|udhar|credit|उधार|ઉધાર)$/i.test(input)) {
+          data.pending.rows.forEach((r) => r.type === 'sale' && (r.paid = false));
+          return say(renderCard(data, L));
+        }
+        if (/^(sab|all|सब|सगळ|બધ)\S*\s+(nagad|cash|paid|नकद|रोख|રોકડ)$/i.test(input)) {
+          data.pending.rows.forEach((r) => r.type === 'sale' && (r.paid = true));
+          return say(renderCard(data, L));
+        }
+        // free-text correction → model, with the card as context
+        if (m || /\b(nahi|galat|sudhar|change|badlo|instead|not)\b/i.test(input)) {
+          return modelTurn({ data, input, L, correcting: true });
+        }
+      }
+    }
+
+    if (UNDO.test(input) && !image) return askUndo(data, L);
+
+    if (!image) {
+      const quick = await quickQuery(data, input, L);
+      if (quick) return say(...quick);
+    }
+    const res = await modelTurn({ data, input, image, L });
+    if (firstTime && !image) res.replies.unshift(L.welcome);
+    return res;
+  }
+
+  // --- model -----------------------------------------------------------------
+  async function modelTurn({ data, input, image = null, L, correcting = false }) {
+    const sys = systemPrompt(data, { today: today(), photo: !!image });
+    const messages = [];
+    if (correcting) messages.push({ role: 'user', text: correctionPrompt(cardText(data, L)) });
+    messages.push({ role: 'user', text: input || (image ? 'Is diary page ki saari entries padho.' : '') });
+
+    let res;
+    try {
+      res = await chat({ system: sys, messages, tools: TOOLS, images: image ? [image] : [] });
+    } catch (err) {
+      console.error('[model]', err.message?.slice(0, 300));
+      return { replies: [L.tryAgain] };
+    }
+    const prefix = res.fellBack ? `${L.offline}\n` : '';
+    const replies = [];
+    let recorded = null;
+
+    for (const call of res.toolCalls || []) {
+      const a = call.args || {};
+      if (call.name === 'record_entries') recorded = (recorded || []).concat(a.entries || []);
+      else if (call.name === 'update_profile') {
+        if (a.diaryProfile) {
+          if (image) data.pendingProfile = a.diaryProfile; // saved on confirm
+          else data.profile.diaryProfile = a.diaryProfile;
+        }
+        if (a.shopName) data.profile.shopName = a.shopName;
+        if (a.language && parseLang(a.language)) data.profile.language = parseLang(a.language);
+        if (!image && (a.shopName || a.language || a.diaryProfile)) replies.push(t(data.profile.language).profileSaved);
+      } else if (call.name === 'get_khata') replies.push(...(await khataReply(data, a.customer, L)));
+      else if (call.name === 'statement') replies.push(...(await statementReply(data, a, L)));
+      else if (call.name === 'get_hisaab') replies.push(hisaabReply(data, a, L));
+      else if (call.name === 'list_customers') replies.push(customersReply(data, L));
+    }
+
+    if (recorded) {
+      if (!recorded.length) return { replies: [prefix + (image ? L.unreadable : L.notUnderstood)] };
+      const source = image ? 'photo' : correcting ? data.pending?.source || 'text' : 'text';
+      const raw = correcting ? data.pending?.raw : input;
+      data.pending = { kind: 'entries', source, raw, createdAt: store.nowIST().ts, rows: [] };
+      for (const e of recorded) data.pending.rows.push(await draftRow(data, e));
+      if (image && data.pendingProfile) {
+        data.pending.diaryProfile = data.pendingProfile;
+        delete data.pendingProfile;
+      }
+      replies.unshift(renderCard(data, L));
+    }
+    delete data.pendingProfile;
+
+    if (!replies.length) replies.push(res.text || (image ? L.unreadable : L.notUnderstood));
+    replies[0] = prefix + replies[0];
+    return { replies };
+  }
+
+  // --- drafts & card -----------------------------------------------------------
+  async function draftRow(data, e) {
+    const type = ['sale', 'payment', 'expense'].includes(e.type) ? e.type : e.type === 'purchase' ? 'expense' : 'sale';
+    const row = {
+      type,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(e.date || '') ? e.date : today(),
+      customerText: type === 'expense' ? null : (e.customer || '').trim() || null,
+      customerId: null,
+      isNew: false,
+      qty: num(e.qty),
+      unit: e.unit || null,
+      qtyLabel: e.qtyLabel || null,
+      ratePaise: toPaise(num(e.rate)),
+      statedPaise: toPaise(num(e.amount)),
+      chosenPaise: null,
+      paid: type === 'sale' ? e.paid === true : null,
+      item: e.item || null,
+      note: e.note || null,
+      confidence: typeof e.confidence === 'number' ? e.confidence : 1,
+    };
+    await resolveCustomer(data, row);
+    return computeRow(row);
+  }
+
+  async function resolveCustomer(data, row) {
+    row.customerId = null;
+    row.isNew = false;
+    if (!row.customerText) return row;
+    const m = await matchCustomer(data, row.customerText);
+    if (m.customer) row.customerId = m.customer.id;
+    else row.isNew = true;
+    return row;
+  }
+
+  async function correctRow(data, i, fix, L) {
+    const row = data.pending.rows[i];
+    const f = fix.toLowerCase();
+    if (/^(hatao|remove|delete|cancel|nikalo|हटाओ|काढा|કાઢો)$/.test(f)) {
+      data.pending.rows.splice(i, 1);
+      if (!data.pending.rows.length) data.pending = null;
+      return true;
+    }
+    if (/^(udhaar|udhar|credit|baaki|उधार|ઉધાર)$/.test(f)) return (row.paid = false), true;
+    if (/^(nagad|cash|paid|upi|नकद|रोख|રોકડ)$/.test(f)) return (row.paid = true), true;
+    if (/^(payment|jama|diye|mila)$/.test(f)) return (row.type = 'payment'), (row.paid = null), computeRow(row), true;
+    let m;
+    if ((m = f.match(/^(?:rate|bhav|bhaav|भाव|रेट|ભાવ)\s*₹?\s*([\d.,]+)$/) || f.match(/^₹?\s*([\d.,]+)\s*(?:rate|bhav|ka rate)$/))) {
+      row.ratePaise = toPaise(m[1]);
+      row.chosenPaise = null;
+      return computeRow(row), true;
+    }
+    if ((m = f.match(/^(?:qty|wajan|vajan|वजन)?\s*([\d.]+)\s*(kg|kilo|किलो|pcs|nag|dozen|crate|peti)$/))) {
+      row.qty = Number(m[1]);
+      row.unit = /kilo|किलो/.test(m[2]) ? 'kg' : m[2];
+      row.chosenPaise = null;
+      return computeRow(row), true;
+    }
+    if ((m = f.match(/^(?:amount|total|kul|₹)?\s*₹?\s*([\d][\d,]*(?:\.\d+)?)$/))) {
+      // trader picks the amount: either answers a conflict or sets the total directly
+      row.chosenPaise = toPaise(m[1]);
+      return computeRow(row), true;
+    }
+    if (/^[\p{L}\s.'&-]+$/u.test(fix) && row.type !== 'expense' && fix.split(/\s+/).length <= 4) {
+      // a name: "Sagar Ratna" or "Gupta Dairy" — learn the original spelling as an alias on confirm
+      const original = row.aliasFrom || row.customerText;
+      row.customerText = fix;
+      await resolveCustomer(data, row);
+      if (original && original.toLowerCase() !== fix.toLowerCase()) row.aliasFrom = original;
+      row.confidence = 1;
+      return true;
+    }
+    return false;
+  }
+
+  function computeRow(row) {
+    if (row.chosenPaise !== null && row.chosenPaise !== undefined) {
+      row.amountPaise = row.chosenPaise;
+      row.computedPaise = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, amountPaise: null }).computedPaise;
+      row.conflict = false;
+    } else {
+      const r = ledger.resolveAmount({ qty: row.qty, ratePaise: row.ratePaise, amountPaise: row.statedPaise });
+      Object.assign(row, { amountPaise: r.amountPaise, computedPaise: r.computedPaise, conflict: r.conflict });
+    }
+    return row;
+  }
+
+  function rowProblems(row) {
+    return row.conflict || !Number.isInteger(row.amountPaise) || row.amountPaise <= 0 || (row.type !== 'expense' && !row.customerText);
+  }
+
+  function rowLine(data, row, i, L) {
+    const parts = [];
+    const cust = row.customerId ? store.getCustomer(data, row.customerId).name : row.customerText;
+    if (row.type === 'expense') parts.push(L.expenseWord + (row.item ? ` · ${row.item}` : row.note ? ` · ${row.note}` : ''));
+    else {
+      let who = cust || L.missingCust;
+      if (row.customerId && row.customerText && cust.toLowerCase() !== row.customerText.toLowerCase()) who = `${row.customerText} → ${cust}`;
+      if (row.isNew) who += ` ${L.naya}`;
+      parts.push(who);
+    }
+    if (row.type === 'payment') parts.push(L.paymentWord);
+    if (row.qtyLabel) parts.push(row.qtyLabel);
+    if (row.type === 'sale' && row.item && !row.qtyLabel) parts.push(row.item);
+    if (row.qty !== null && row.ratePaise !== null && row.computedPaise !== null) {
+      const working = `${fmtQty(row.qty, row.unit)} × ${fmt(row.ratePaise)} = ${fmt(row.computedPaise)}`;
+      if (row.conflict) parts.push(working);
+      else if (row.amountPaise !== row.computedPaise) parts.push(`${working} → ${fmt(row.amountPaise)}`);
+      else parts.push(working);
+    } else if (row.qty !== null) {
+      parts.push(fmtQty(row.qty, row.unit));
+      if (Number.isInteger(row.amountPaise)) parts.push(fmt(row.amountPaise));
+    } else if (Number.isInteger(row.amountPaise)) parts.push(fmt(row.amountPaise));
+    if (row.type === 'sale') parts.push(row.paid ? L.nagad : L.udhaar);
+    if (row.date !== today()) parts.push(row.date.slice(8, 10) + '/' + row.date.slice(5, 7));
+    let line = `${i + 1}. ${parts.join(' · ')}`;
+    if (row.conflict) line += `\n   ${L.conflict(fmt(row.computedPaise), fmt(row.statedPaise))}`;
+    else if (!Number.isInteger(row.amountPaise) || row.amountPaise <= 0) line += ` ${L.missingAmt}`;
+    else if (row.confidence < 0.6) line += ` ${L.check}`;
+    return line;
+  }
+
+  function cardText(data, L) {
+    return data.pending.rows.map((r, i) => rowLine(data, r, i, L)).join('\n');
+  }
+
+  function renderCard(data, L) {
+    if (!data.pending) return L.cancelled;
+    const rows = data.pending.rows;
+    const lines = [cardText(data, L)];
+    if (rows.length > 1) {
+      const tt = ledger.draftTotals(rows);
+      const bits = [];
+      if (tt.sales) bits.push(`${fmt(tt.sales)} (${L.udhaar} ${fmt(tt.udhaarSales)}, ${L.nagad} ${fmt(tt.cashSales)})`);
+      if (tt.payments) bits.push(`${L.paymentWord} ${fmt(tt.payments)}`);
+      if (tt.expenses) bits.push(`${L.expenseWord} ${fmt(tt.expenses)}`);
+      if (bits.length) lines.push(`${L.total}: ${bits.join(' · ')}`);
+    }
+    lines.push(data.pending.source === 'photo' || rows.length > 1 ? L.photoFooter : L.confirmQ);
+    return lines.join('\n');
+  }
+
+  // --- confirm / undo / delete -----------------------------------------------
+  function confirm(data, L) {
+    const p = data.pending;
+    if (p.kind === 'delete') {
+      const lang = data.profile.language;
+      Object.assign(data, store.defaults());
+      data.profile.language = lang;
+      return { replies: [L.deleted] };
+    }
+    if (p.kind === 'undo') {
+      const { ts } = store.nowIST();
+      const batch = store.newId('b');
+      for (const id of p.entryIds) {
+        const e = data.entries.find((x) => x.id === id);
+        if (e) data.entries.push({ ...ledger.reversalOf(e, store.newId('e'), ts), batch });
+      }
+      data.pending = null;
+      const balances = balanceLines(data, p.customerIds, L);
+      return { replies: [[L.undone, ...balances].join('\n')] };
+    }
+    if (p.rows.some(rowProblems)) return { replies: [L.needFix + '\n\n' + renderCard(data, L)] };
+
+    const { ts } = store.nowIST();
+    const batch = store.newId('b');
+    const touched = new Set();
+    const saved = [];
+    for (const r of p.rows) {
+      let customerId = r.customerId;
+      if (r.type !== 'expense') {
+        if (!customerId) {
+          // naya customer: created only now, on the trader's "haan"
+          customerId = (store.findCustomerByText(data, r.customerText) || store.addCustomer(data, r.customerText)).id;
+        }
+        if (r.aliasFrom) store.addAlias(data, customerId, r.aliasFrom);
+        const c = store.getCustomer(data, customerId);
+        if (r.customerText && r.customerText.toLowerCase() !== c.name.toLowerCase()) store.addAlias(data, customerId, r.customerText);
+        touched.add(customerId);
+      }
+      const entry = {
+        id: store.newId('e'),
+        ts,
+        date: r.date,
+        type: r.type,
+        customerId: r.type === 'expense' ? null : customerId,
+        amountPaise: r.amountPaise,
+        paid: r.type === 'sale' ? !!r.paid : null,
+        item: r.item,
+        qty: r.qty,
+        unit: r.unit,
+        ratePaise: r.ratePaise,
+        qtyLabel: r.qtyLabel,
+        note: r.note,
+        raw: p.raw || null,
+        source: p.source,
+        reverses: null,
+        batch,
+      };
+      const errors = ledger.validateEntry(entry);
+      if (errors.length) return { replies: [L.needFix + '\n\n' + renderCard(data, L)] };
+      saved.push(entry);
+    }
+    data.entries.push(...saved);
+    const replies = [[L.saved, ...balanceLines(data, [...touched], L)].join('\n')];
+    if (p.source === 'photo') {
+      data.profile.lastPage = cardText(data, L).slice(0, 1500);
+      if (p.diaryProfile && !data.profile.diaryProfile) {
+        data.profile.diaryProfile = p.diaryProfile;
+        replies.push(L.remembered);
+      }
+    }
+    data.pending = null;
+    return { replies };
+  }
+
+  function balanceLines(data, customerIds, L) {
+    return customerIds.slice(0, 8).map((id) => L.balanceNow(store.getCustomer(data, id).name, fmt(ledger.customerBalance(data, id))));
+  }
+
+  function askUndo(data, L) {
+    const reversed = new Set(data.entries.filter((e) => e.reverses).map((e) => e.reverses));
+    const last = [...data.entries].reverse().find((e) => !e.reverses && !reversed.has(e.id));
+    if (!last) return { replies: [L.nothingToUndo] };
+    const batch = data.entries.filter((e) => e.batch === last.batch && !e.reverses && !reversed.has(e.id));
+    data.pending = {
+      kind: 'undo',
+      entryIds: batch.map((e) => e.id),
+      customerIds: [...new Set(batch.map((e) => e.customerId).filter(Boolean))],
+      createdAt: store.nowIST().ts,
+    };
+    const lines = batch.map((e, i) => `${i + 1}. ${entryLine(data, e, L)}`);
+    return { replies: [[...lines, L.undoQ].join('\n')] };
+  }
+
+  return { handleMessage, _internals: { renderCard, rowLine } };
+}
+
+// --- queries (templates; numbers from ledger.js) -------------------------------
+
+function entryLine(data, e, L) {
+  const c = e.customerId ? store.getCustomer(data, e.customerId)?.name : null;
+  const bits = [e.date.slice(8, 10) + '/' + e.date.slice(5, 7)];
+  if (c) bits.push(c);
+  if (e.type === 'payment') bits.push(L.paymentWord);
+  if (e.type === 'expense') bits.push(L.expenseWord + (e.item ? ` ${e.item}` : ''));
+  if (e.qtyLabel) bits.push(e.qtyLabel);
+  if (e.qty !== null && e.qty !== undefined && e.ratePaise) bits.push(`${fmtQty(e.qty, e.unit)} × ${fmt(e.ratePaise)}`);
+  bits.push(fmt(e.amountPaise));
+  if (e.type === 'sale') bits.push(e.paid ? L.nagad : L.udhaar);
+  if (e.reverses) bits.push('↩︎ undo');
+  return bits.join(' · ');
+}
+
+async function findCustomer(data, name) {
+  if (!name) return null;
+  const m = await matchCustomer(data, name);
+  return m.customer;
+}
+
+async function khataReply(data, name, L) {
+  const c = await findCustomer(data, name);
+  if (!c) return [L.noCustomer(name)];
+  const k = ledger.khata(data, c.id);
+  const head = k.closing > 0 ? L.baaki(c.name, fmt(k.closing)) : L.noBaaki(c.name);
+  const recent = k.rows.slice(-5).map((e) => '• ' + entryLine(data, e, L));
+  return [[head, ...(recent.length ? [L.lastEntries, ...recent] : [])].join('\n')];
+}
+
+async function statementReply(data, { customer, from, to }, L) {
+  const c = await findCustomer(data, customer);
+  if (!c) return [L.noCustomer(customer)];
+  const valid = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : undefined);
+  const k = ledger.khata(data, c.id, { from: valid(from), to: valid(to) });
+  const first = k.rows[0]?.date || store.nowIST().date;
+  const last = k.rows.at(-1)?.date || first;
+  const d = (x) => x.slice(8, 10) + '/' + x.slice(5, 7);
+  const lines = [L.stmtTitle(c.name, `${d(valid(from) || first)} – ${d(valid(to) || last)}`)];
+  if (k.opening) lines.push(`${L.opening}: ${fmt(k.opening)}`);
+  for (const e of k.rows) lines.push(`${entryLine(data, e, L)}  ⇒ ${fmt(e.running)}`);
+  lines.push(`${L.closing}: ${fmt(k.closing)}`);
+  lines.push(`${L.thanks}${data.profile.shopName ? ' — ' + data.profile.shopName : ''}`);
+  return [lines.join('\n')];
+}
+
+export function periodRange(period, today) {
+  const d = new Date(today + 'T00:00:00Z');
+  const iso = (x) => x.toISOString().slice(0, 10);
+  const minus = (n) => iso(new Date(d.getTime() - n * 86400000));
+  switch (period) {
+    case 'yesterday': return { from: minus(1), to: minus(1), label: minus(1) };
+    case 'week': return { from: minus((d.getUTCDay() + 6) % 7), to: today, label: `${minus((d.getUTCDay() + 6) % 7)} – ${today}` };
+    case 'month': return { from: today.slice(0, 8) + '01', to: today, label: today.slice(0, 7) };
+    case 'all': return { from: '0000-01-01', to: '9999-12-31', label: 'all' };
+    default: return { from: today, to: today, label: today };
+  }
+}
+
+function hisaabReply(data, { period, from, to }, L) {
+  const today = store.nowIST().date;
+  const valid = (x) => /^\d{4}-\d{2}-\d{2}$/.test(x || '');
+  const r = valid(from) ? { from, to: valid(to) ? to : from, label: valid(to) && to !== from ? `${from} – ${to}` : from } : periodRange(period, today);
+  const h = ledger.hisaab(data, r);
+  const lines = [L.hisaabTitle(r.label)];
+  if (!h.count) lines.push(L.noEntries);
+  else {
+    lines.push(`${L.sales}: ${fmt(h.sales)} (${L.nagad} ${fmt(h.cashSales)}, ${L.udhaar} ${fmt(h.udhaarSales)})`);
+    lines.push(`${L.payments}: ${fmt(h.payments)}`);
+    if (h.expenses) lines.push(`${L.expenses}: ${fmt(h.expenses)}`);
+    lines.push(`${L.cashInHand}: ${fmt(h.cashInHand)}`);
+  }
+  lines.push(`${L.totalDue}: ${fmt(h.totalDue)}`);
+  if (h.topDues.length) {
+    lines.push(`${L.topDues}:`);
+    for (const d of h.topDues) lines.push(`• ${store.getCustomer(data, d.customerId)?.name}: ${fmt(d.paise)}`);
+  }
+  return lines.join('\n');
+}
+
+function customersReply(data, L) {
+  if (!data.customers.length) return L.noCustomers;
+  const bal = ledger.allBalances(data);
+  const rows = data.customers
+    .map((c) => ({ c, b: bal.get(c.id) || 0 }))
+    .sort((a, b) => b.b - a.b)
+    .map(({ c, b }) => `• ${c.name}: ${fmt(b)}`);
+  return [L.customersTitle, ...rows].join('\n');
+}
+
+// Common questions answered with zero model calls.
+async function quickQuery(data, input, L) {
+  const s = input.toLowerCase().replace(/[?？!.]+$/g, '').trim();
+  let m;
+  if ((m = s.match(/^(.+?)\s+(?:ka|ki|ke|का|की|के|चा|ची|ચા|નું|નો)\s+(baaki|baki|udhaar|khata|बाकी|खाता|બાકી|statement|bill|हिसाब)(?:\s+(?:kitna|kitni|hai|kya))*$/)) && (await findCustomer(data, m[1]))) {
+    return /statement|bill|हिसाब/.test(m[2]) ? statementReply(data, { customer: m[1] }, L) : khataReply(data, m[1], L);
+  }
+  if (/^(aaj|today|आज|આજ)\S*\s*(ka|ki|cha|chi|no|nu|s)?\s*(hisaab|hisab|hishob|हिसाब|हिशोब|હિસાબ|summary|total)$/.test(s) || s === "today's summary")
+    return [hisaabReply(data, { period: 'today' }, L)];
+  if (/^(kal|yesterday|कल|काल)\S*\s*(ka|cha|chi)?\s*(hisaab|hisab|हिसाब|हिशोब|summary)$/.test(s)) return [hisaabReply(data, { period: 'yesterday' }, L)];
+  if (/^(is|iss|this)\s*(hafte|week|हफ्ते)\S*\s*(ka)?\s*(hisaab|hisab|हिसाब|summary)?$/.test(s)) return [hisaabReply(data, { period: 'week' }, L)];
+  if (/^(is|iss|this)\s*(mahine|month|महीने)\S*\s*(ka)?\s*(hisaab|hisab|हिसाब|summary)?$/.test(s)) return [hisaabReply(data, { period: 'month' }, L)];
+  if (/^(kaun ?kaun|kis kis|who owes|सब का बाकी|kiska baaki)/.test(s)) return [hisaabReply(data, { period: 'today' }, L)];
+  if (/^(customers|grahak|ग्राहक|list)$/.test(s)) return [customersReply(data, L)];
+  return null;
+}
+
+function exportCsv(data, L) {
+  const head = ['id', 'date', 'type', 'customer', 'qtyLabel', 'qty', 'unit', 'rate', 'amount', 'paid', 'item', 'note', 'source', 'reverses'];
+  const esc = (v) => (v === null || v === undefined ? '' : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  const rupees = (p) => (p === null || p === undefined ? '' : (p / 100).toFixed(2));
+  const lines = [head.join(',')];
+  for (const e of data.entries) {
+    lines.push(
+      [e.id, e.date, e.type, store.getCustomer(data, e.customerId)?.name, e.qtyLabel, e.qty, e.unit, rupees(e.ratePaise), rupees(e.amountPaise), e.paid, e.item, e.note, e.source, e.reverses]
+        .map(esc)
+        .join(','),
+    );
+  }
+  return { document: { filename: `munshi-khata-${store.nowIST().date}.csv`, data: Buffer.from(lines.join('\n'), 'utf8') }, caption: L.exportCaption };
+}
+
+function detectLang(text, current) {
+  if (/[઀-૿]/.test(text)) return 'gu';
+  if (/[ऀ-ॿ]/.test(text)) return current === 'mr' || current === 'hi' ? current : 'hi';
+  return current;
+}
+
+function num(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'number' ? v : Number(String(v).replace(/[₹,\s]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+const defaultHandler = createHandler();
+export const handleMessage = defaultHandler.handleMessage;

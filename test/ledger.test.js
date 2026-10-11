@@ -75,3 +75,15 @@ test('validateEntry catches bad type, zero amount, missing customer', () => {
   assert.deepEqual(validateEntry({ type: 'expense', amountPaise: 500, date: '2026-10-11' }), []);
   assert.deepEqual(validateEntry({ type: 'loan', amountPaise: 500, date: 'x' }), ['type loan', 'date']);
 });
+
+test('draftTotals splits cash/udhaar and counts missing amounts', async () => {
+  const { draftTotals } = await import('../src/core/ledger.js');
+  const t = draftTotals([
+    { type: 'sale', amountPaise: 201600, paid: false },
+    { type: 'sale', amountPaise: 50000, paid: true },
+    { type: 'payment', amountPaise: 150000 },
+    { type: 'expense', amountPaise: 20000 },
+    { type: 'sale', amountPaise: null, paid: false },
+  ]);
+  assert.deepEqual(t, { sales: 251600, cashSales: 50000, udhaarSales: 201600, payments: 150000, expenses: 20000, missing: 1 });
+});

@@ -1,0 +1,112 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+process.env.MUNSHI_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'munshi-h-'));
+process.env.MUNSHI_EMBED = 'off';
+const store = await import('../src/core/store.js');
+const { createHandler } = await import('../src/bot/handler.js');
+const { customerBalance } = await import('../src/core/ledger.js');
+
+// Fake provider: returns whatever tool calls the test queues.
+let queue = [];
+const calls = [];
+const chat = async (req) => { calls.push(req); return queue.shift() || { text: '', toolCalls: [] }; };
+const rec = (...entries) => ({ text: '', toolCalls: [{ name: 'record_entries', args: { entries } }] });
+const { handleMessage } = createHandler({ chat, today: () => '2026-10-11' });
+const say = async (traderId, text) => (await handleMessage({ traderId, text })).filter((r) => !/^Namaste/.test(r));
+
+test('text → card with working + naya customer → nothing saved until haan', async () => {
+  queue.push(rec({ type: 'sale', customer: 'Sagar hotel', qtyLabel: '3 jalli', qty: 72, unit: 'kg', rate: 28, paid: false }));
+  const [card] = await say('a', 'Sagar hotel 3 jalli 72kg 28 rate udhaar');
+  assert.match(card, /1\. Sagar hotel \(naya customer\) · 3 jalli · 72 kg × ₹28 = ₹2,016 · udhaar/);
+  assert.match(card, /haan likhu/);
+  assert.equal(store.load('a').entries.length, 0);
+  const [ok] = await say('a', 'haan');
+  assert.match(ok, /Likh diya/);
+  assert.match(ok, /₹2,016/);
+  const d = store.load('a');
+  assert.equal(d.entries.length, 1);
+  assert.equal(d.entries[0].amountPaise, 201600);
+  assert.equal(customerBalance(d, d.customers[0].id), 201600);
+});
+
+test('known customer matches, payment lowers balance, baaki answered without the model', async () => {
+  queue.push(rec({ type: 'payment', customer: 'Sagar', amount: 1500 }));
+  const [card] = await say('a', 'Sagar ne 1500 diye');
+  assert.doesNotMatch(card, /naya/);
+  assert.match(card, /Sagar → Sagar hotel · payment mila · ₹1,500/);
+  await say('a', 'haan');
+  const n = calls.length;
+  const [baaki] = await say('a', 'Sagar ka baaki?');
+  assert.equal(calls.length, n, 'no model call');
+  assert.match(baaki, /₹516/);
+  const [h] = await say('a', 'aaj ka hisaab');
+  assert.match(h, /Bikri: ₹2,016/);
+  assert.match(h, /Payment mile: ₹1,500/);
+});
+
+test('stated total that disagrees with qty×rate must be answered before saving', async () => {
+  queue.push(rec({ type: 'sale', customer: 'Gupta', qty: 72, unit: 'kg', rate: 28, amount: 2000, paid: true }));
+  const [card] = await say('b', 'Gupta 72kg 28 rate 2000 nagad');
+  assert.match(card, /₹2,016 banta hai, aapne ₹2,000 likha/);
+  const [no] = await say('b', 'haan');
+  assert.match(no, /Pehle ⚠️/);
+  assert.equal(store.load('b').entries.length, 0);
+  const [fixed] = await say('b', '1 2000');
+  assert.match(fixed, /₹2,016 → ₹2,000/);
+  await say('b', 'haan');
+  assert.equal(store.load('b').entries[0].amountPaise, 200000);
+});
+
+test('row corrections: rename learns alias, rate change recomputes, hatao removes', async () => {
+  await say('c', 'customers'); // creates file
+  const d = store.load('c'); store.addCustomer(d, 'Gupta Dairy'); store.save('c', d);
+  queue.push(rec(
+    { type: 'sale', customer: 'Gpt', qty: 10, unit: 'kg', rate: 30, paid: false, confidence: 0.4 },
+    { type: 'sale', customer: 'Raju', qty: 5, unit: 'kg', rate: 20, paid: true },
+    { type: 'expense', item: 'bhada', amount: 200 },
+  ));
+  const [card] = await handleMessage({ traderId: 'c', text: '', image: { mimeType: 'image/jpeg', base64: 'xx' } });
+  assert.match(card, /1\. Gpt \(naya customer\).*⚠️ check/);
+  assert.match(card, /Kul: ₹400/);
+  assert.match(card, /Sab sahi\?/);
+  let [c2] = await say('c', '1 Gupta Dairy');
+  assert.match(c2, /1\. Gupta Dairy · 10 kg × ₹30 = ₹300 · udhaar/);
+  [c2] = await say('c', '2 rate 25');
+  assert.match(c2, /5 kg × ₹25 = ₹125/);
+  [c2] = await say('c', '3 hatao');
+  assert.doesNotMatch(c2, /kharcha/);
+  await say('c', 'haan');
+  const after = store.load('c');
+  assert.equal(after.entries.length, 2);
+  assert.ok(after.customers.find((x) => x.name === 'Gupta Dairy').aliases.includes('gpt'));
+  assert.ok(after.profile.lastPage.includes('Gupta Dairy'));
+});
+
+test('undo asks first, then writes a reversing entry; original stays', async () => {
+  const [q] = await say('a', 'galti');
+  assert.match(q, /cancel karu/);
+  assert.equal(store.load('a').entries.length, 2);
+  await say('a', 'haan');
+  const d = store.load('a');
+  assert.equal(d.entries.length, 3);
+  assert.equal(d.entries[2].amountPaise, -150000);
+  assert.equal(customerBalance(d, d.customers[0].id), 201600);
+});
+
+test('nahi clears the card; /bhasha switches language', async () => {
+  queue.push(rec({ type: 'sale', customer: 'X', amount: 100, paid: true }));
+  await say('d', 'X 100 nagad');
+  const [c] = await say('d', 'nahi');
+  assert.match(c, /kuch nahi likha/);
+  assert.equal(store.load('d').pending, null);
+  const [m] = await say('d', '/bhasha marathi');
+  assert.match(m, /मराठी/);
+  queue.push(rec({ type: 'sale', customer: 'X', amount: 100, paid: true }));
+  const [card] = await say('d', 'X 100 nagad');
+  assert.match(card, /नवीन ग्राहक/);
+  assert.match(card, /लिहू का/);
+});

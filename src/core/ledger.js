@@ -98,3 +98,15 @@ export function validateEntry(e) {
   if ((e.type === 'sale' || e.type === 'payment') && !e.customerId) errors.push('customer');
   return errors;
 }
+
+// Totals for an unconfirmed card. Rows: { type, amountPaise|null, paid }. Rows without an amount are skipped and counted.
+export function draftTotals(rows) {
+  const t = { sales: 0, cashSales: 0, udhaarSales: 0, payments: 0, expenses: 0, missing: 0 };
+  for (const r of rows) {
+    if (!Number.isInteger(r.amountPaise)) { t.missing++; continue; }
+    if (r.type === 'sale') { t.sales += r.amountPaise; r.paid ? (t.cashSales += r.amountPaise) : (t.udhaarSales += r.amountPaise); }
+    else if (r.type === 'payment') t.payments += r.amountPaise;
+    else if (r.type === 'expense') t.expenses += r.amountPaise;
+  }
+  return t;
+}
